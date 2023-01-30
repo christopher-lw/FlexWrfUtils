@@ -143,27 +143,4 @@ def main():
 
 
 if __name__ == "__main__":
-    timerange_info = pd.DataFrame(
-        dict(
-            file_path=["file1", "file2"],
-            min=[
-                np.datetime64("2009-01-01T00:00:00"),
-                np.datetime64("2010-01-01T00:00:00"),
-            ],
-            max=[
-                np.datetime64("2010-01-01T00:00:00"),
-                np.datetime64("2011-01-01T00:00:00"),
-            ],
-        )
-    )
-    times = np.array(
-        [
-            np.datetime64("2009-01-01T00:00:00"),
-            np.datetime64("2010-01-01T00:00:00"),
-            np.datetime64("2011-01-01T00:00:00"),
-        ]
-    )
-    assign_files(times, timerange_info, "start"), ["file1", "file2", "file2"]
-    assign_files(times, timerange_info, "end"), ["file1", "file1", "file2"]
-
-    # main()
+    main()
