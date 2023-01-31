@@ -131,13 +131,16 @@ def main():
     timerange_info = timerange_info.sort_values(by="min")
 
     assigned_wrf_files = assign_files(
-        wrf_file_times, timerange_info, args.overlap_choice
+        wrf_total_times, timerange_info, args.overlap_choice
     )
     dates, times = extract_datetime_strings(wrf_total_times)
 
     with output_file.open("w") as available_file:
         available_file.write("XXXXXX EMPTY LINES XXXXXXXXX\n")
         available_file.write("XXXXXX EMPTY LINES XXXXXXXX\n")
+        available_file.write(
+            "YYYYMMDD HHMMSS      name of the file(up to 80 characters)\n"
+        )
         for assigned_wrf_file, date, time in zip(assigned_wrf_files, dates, times):
             available_file.write(f"{date} {time}      '{assigned_wrf_file}'      ' '\n")
 
