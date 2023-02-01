@@ -1,6 +1,9 @@
 from flexwrfutils.classes.flexwrfinput import FlexWrfOption, FlexWrfInput
+
 from flexwrfutils.classes.flexwrfenum import (
-    PathnamesArgs,
+    PathnamesheaderArgs,
+    PathnamesinstanceArgs,
+    PathnamesfooterArgs,
     CommandArgs,
     AgeclassheaderArgs,
     AgeclassinstanceArgs,
@@ -37,7 +40,9 @@ def file_content():
 @pytest.mark.parametrize(
     "OptionEnum,start_index,end_index",
     [
-        (PathnamesArgs, 0, 5),
+        (PathnamesheaderArgs, 0, 2),
+        (PathnamesinstanceArgs, 2, 4),
+        (PathnamesfooterArgs, 4, 5),
         (CommandArgs, 5, 41),
         (AgeclassheaderArgs, 41, 43),
         (AgeclassinstanceArgs, 43, 44),
@@ -72,55 +77,83 @@ class Test_FlexWrfOption_init:
 ##############################
 
 
-def test_read_command_correct(file_content):
-    instance = FlexWrfInput(file_content)
-    instance.read_command(line_index=5)
+@pytest.mark.parametrize(
+    "function, line_index",
+    [
+        ("read_pathnames", 0),
+        ("read_command", 5),
+        ("read_ageclass", 41),
+        ("read_outgrid", 45),
+        ("read_outgridnest", 57),
+        ("read_receptor", 65),
+        ("read_species", 67),
+        ("read_releases", 72),
+    ],
+)
+class Test_FlexWrfInput_read:
+    def test_read_correctly(self, file_content, function, line_index):
+        instance = FlexWrfInput(file_content)
+        getattr(instance, function)(line_index)
+
+    @pytest.mark.xfail
+    def test_read_not_correctly1(self, file_content, function, line_index):
+        file_content.insert(line_index + 1, "imposter line")
+        instance = FlexWrfInput(file_content)
+        getattr(instance, function)(line_index)
+
+    @pytest.mark.xfail
+    def test_read_not_correctly2(self, file_content, function, line_index):
+        instance = FlexWrfInput(file_content)
+        getattr(instance, function)(line_index + 1)
 
 
-@pytest.mark.xfail
-def test_read_command_not_correct1(file_content):
-    file_content.insert(6, "impostor line")
-    instance = FlexWrfInput(file_content)
-    instance.read_command(line_index=5)
+# def test_read_command_correct(file_content):
+#     instance = FlexWrfInput(file_content)
+#     instance.read_command(line_index=5)
 
 
-@pytest.mark.xfail
-def test_read_command_not_correct2(file_content):
-    instance = FlexWrfInput(file_content)
-    instance.read_command(line_index=6)
+# def test_read_command_not_correct1(file_content):
+#     file_content.insert(6, "impostor line")
+#     instance = FlexWrfInput(file_content)
+#     instance.read_command(line_index=5)
 
 
-def test_read_ageclass_correct(file_content):
-    instance = FlexWrfInput(file_content)
-    instance.read_ageclass(line_index=41)
+# def test_read_command_not_correct2(file_content):
+#     instance = FlexWrfInput(file_content)
+#     instance.read_command(line_index=6)
 
 
-@pytest.mark.xfail
-def test_read_ageclass_not_correct1(file_content):
-    file_content.insert(43, "impostor line")
-    instance = FlexWrfInput(file_content)
-    instance.read_ageclass(line_index=41)
+# def test_read_ageclass_correct(file_content):
+#     instance = FlexWrfInput(file_content)
+#     instance.read_ageclass(line_index=41)
 
 
-@pytest.mark.xfail
-def test_read_ageclass_not_correct2(file_content):
-    instance = FlexWrfInput(file_content)
-    instance.read_ageclass(line_index=42)
+# @pytest.mark.xfail
+# def test_read_ageclass_not_correct1(file_content):
+#     file_content.insert(43, "impostor line")
+#     instance = FlexWrfInput(file_content)
+#     instance.read_ageclass(line_index=41)
 
 
-def test_read_outgrid_correct(file_content):
-    instance = FlexWrfInput(file_content)
-    instance.read_outgrid(line_index=45)
+# @pytest.mark.xfail
+# def test_read_ageclass_not_correct2(file_content):
+#     instance = FlexWrfInput(file_content)
+#     instance.read_ageclass(line_index=42)
 
 
-@pytest.mark.xfail
-def test_read_outgrid_not_correct1(file_content):
-    file_content.insert(46, "impostor line")
-    instance = FlexWrfInput(file_content)
-    instance.read_outgrid(line_index=45)
+# def test_read_outgrid_correct(file_content):
+#     instance = FlexWrfInput(file_content)
+#     instance.read_outgrid(line_index=45)
 
 
-@pytest.mark.xfail
-def test_read_outgrid_not_correct2(file_content):
-    instance = FlexWrfInput(file_content)
-    instance.read_outgrid(line_index=46)
+# @pytest.mark.xfail
+# def test_read_outgrid_not_correct1(file_content):
+#     file_content.insert(46, "impostor line")
+#     instance = FlexWrfInput(file_content)
+#     instance.read_outgrid(line_index=45)
+
+
+# @pytest.mark.xfail
+# def test_read_outgrid_not_correct2(file_content):
+#     instance = FlexWrfInput(file_content)
+#     instance.read_outgrid(line_index=46)

@@ -5,13 +5,19 @@ class FlexWrfEnum(Enum):
     pass
 
 
-class PathnamesArgs(FlexWrfEnum):
+class PathnamesheaderArgs(FlexWrfEnum):
     START_DELIMITER = (
         start_delimiter
     ) = "=====================FORMER PATHNAMES FILE==================="
     OUTPUT_PATH = output_path = "#"
+
+
+class PathnamesinstanceArgs(FlexWrfEnum):
     INPUT_PATH = input_path = "# "
     AVAILABLE_PATH = available_path = "#  "
+
+
+class PathnamesfooterArgs(FlexWrfEnum):
     END_DELIMITER = (
         end_delimiter
     ) = "============================================================="

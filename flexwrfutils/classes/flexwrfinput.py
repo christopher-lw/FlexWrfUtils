@@ -3,11 +3,24 @@ from typing import Union, List, Dict, Any, Tuple
 import numpy as np
 from .flexwrfenum import (
     FlexWrfEnum,
+    PathnamesheaderArgs,
+    PathnamesinstanceArgs,
+    PathnamesfooterArgs,
     CommandArgs,
     AgeclassheaderArgs,
     AgeclassinstanceArgs,
     OutgridheaderArgs,
     OutgridinstanceArgs,
+    OutgridnestArgs,
+    ReceptorheaderArgs,
+    SpeciesheaderArgs,
+    SpeciesinstanceArgs,
+    ReleasesheaderArgs,
+    ReleaseslinkArgs,
+    ReleasesnumpointArgs,
+    ReleasesinstanceArgs,
+    ReleasesinstancexmassArgs,
+    ReleasesinstancenameArgs,
 )
 
 
@@ -58,76 +71,168 @@ class FlexWrfOption:
         return output_string
 
 
+class OptionReader:
+    def __init__(self, file_content: List[str], line_index: int):
+        self._file_content = file_content
+        self._start_line_index = line_index
+        self._line_index = line_index
+        self._options = []
+
+    def read_static(self, OptionEnum: FlexWrfEnum) -> Tuple[int, FlexWrfOption]:
+        expected_end = self._line_index + len(OptionEnum)
+        option_content = self._file_content[self._line_index : expected_end]
+        self._options.append(FlexWrfOption(option_content, OptionEnum))
+        self._line_index = expected_end
+
+    def read_flexible(
+        self, OptionEnum: FlexWrfEnum, relative_specifier_position: int
+    ) -> Tuple[int, List[FlexWrfOption]]:
+        expected_instances = int(
+            self._file_content[self._line_index + relative_specifier_position]
+            .strip()
+            .split(" ")[0]
+        )
+        for _ in range(expected_instances):
+            self.read_static(OptionEnum)
+
+    def check_start(self, OptionEnum: FlexWrfEnum):
+        assert (
+            "==" in self._file_content[self._line_index]
+        ), f"Expected '==' at start of option section {OptionEnum.name}."
+
+    def check_end(self, OptionEnum: FlexWrfEnum):
+        assert (
+            "==" in self._file_content[self._line_index]
+        ), f"Expected line with '==' after end of option section {OptionEnum.name}."
+
+
+class PathnamesReader(OptionReader):
+    def read(self) -> Tuple[int, List[FlexWrfOption]]:
+        self._options = []
+        self._line_index = self._start_line_index
+        self.check_start(PathnamesheaderArgs)
+        self.read_static(PathnamesheaderArgs)
+        while "==" not in self._file_content[self._line_index]:
+            self.read_static(PathnamesinstanceArgs)
+        self.read_static(PathnamesfooterArgs)
+        self.check_end(PathnamesfooterArgs)
+
+
+class CommandReader(OptionReader):
+    def read(self) -> Tuple[int, List[FlexWrfOption]]:
+        self._options = []
+        self._line_index = self._start_line_index
+        self.check_start(CommandArgs)
+        self.read_static(CommandArgs)
+        self.check_end(CommandArgs)
+        return self._line_index, self._options
+
+
+class AgeclassReader(OptionReader):
+    def read(self) -> Tuple[int, List[FlexWrfOption]]:
+        self._options = []
+        self._line_index = self._start_line_index
+        self.check_start(AgeclassheaderArgs)
+        self.read_static(AgeclassheaderArgs)
+        self.read_flexible(AgeclassinstanceArgs, -1)
+        self.check_end(AgeclassinstanceArgs)
+        return self._line_index, self._options
+
+
+class OutgridReader(OptionReader):
+    def read(self) -> Tuple[int, List[FlexWrfOption]]:
+        self._options = []
+        self._line_index = self._start_line_index
+        self.check_start(OutgridheaderArgs)
+        self.read_static(OutgridheaderArgs)
+        self.read_flexible(OutgridinstanceArgs, -1)
+        return self._line_index, self._options
+
+
+class OutgridnestReader(OptionReader):
+    def read(self) -> Tuple[int, List[FlexWrfOption]]:
+        self._options = []
+        self._line_index = self._start_line_index
+        self.check_start(OutgridnestArgs)
+        self.read_static(OutgridnestArgs)
+        self.check_end(OutgridnestArgs)
+        return self._line_index, self._options
+
+
+class ReceptorReader(OptionReader):
+    def read(self) -> Tuple[int, List[FlexWrfOption]]:
+        self._options = []
+        self._line_index = self._start_line_index
+        self.check_start(ReceptorheaderArgs)
+        self.read_static(ReceptorheaderArgs)
+        self.check_end(ReceptorheaderArgs)
+        return self._line_index, self._options
+
+
+class SpeciesReader(OptionReader):
+    def read(self) -> Tuple[int, List[FlexWrfOption]]:
+        self._options = []
+        self._line_index = self._start_line_index
+        self.check_start(SpeciesheaderArgs)
+        self.read_static(SpeciesheaderArgs)
+        self.read_flexible(SpeciesinstanceArgs, -2)
+        self.check_end(SpeciesinstanceArgs)
+
+
+class ReleasesReader(OptionReader):
+    def read(self) -> Tuple[int, List[FlexWrfOption]]:
+        self._options = []
+        self._line_index = self._start_line_index
+        self.check_start(ReleasesheaderArgs)
+        self.read_static(ReleasesheaderArgs)
+        number_of_species = int(
+            self._file_content[self._line_index - 2].strip().split(" ")[0]
+        )
+        self.read_flexible(ReleaseslinkArgs, -2)
+
+        self.read_static(ReleasesnumpointArgs)
+        number_of_releases = int(
+            self._file_content[self._line_index - 1].strip().split(" ")[0]
+        )
+        for _ in range(number_of_releases):
+            self.read_static(ReleasesinstanceArgs)
+            for _ in range(number_of_species):
+                self.read_static(ReleasesinstancexmassArgs)
+            self.read_static(ReleasesinstancenameArgs)
+
+
 class FlexWrfInput:
     def __init__(self, file_content: List[str]):
         self._file_content = file_content
 
-    def read_command(self, line_index: int) -> Tuple[int, List[FlexWrfOption]]:
-        # line index after content of COMMAND file
-        expected_end = line_index + len(CommandArgs)
-        assert (
-            "==" in self._file_content[line_index]
-        ), "Expected '==' at start of COMMAND file part."
-        assert (
-            "==" in self._file_content[expected_end]
-        ), "Expected line with '==' after COMMAND file part"
-        command = []
-        command_content = self._file_content[line_index:expected_end]
-        command.append(FlexWrfOption(command_content, CommandArgs))
-        return expected_end, command
+    def read_pathnames(self, line_index: int) -> Tuple[int, List[FlexWrfOption]]:
+        Reader = PathnamesReader(self._file_content, line_index)
+        return Reader.read()
 
-    def _line_reader(self, line_index: int, OptionEnum: FlexWrfEnum):
-        expected_end = line_index + len(OptionEnum)
-        option_content = self._file_content[line_index:expected_end]
-        option = FlexWrfOption(option_content, OptionEnum)
-        return expected_end, option
+    def read_command(self, line_index: int) -> Tuple[int, List[FlexWrfOption]]:
+        Reader = CommandReader(self._file_content, line_index)
+        return Reader.read()
 
     def read_ageclass(self, line_index: int) -> Tuple[int, List[FlexWrfOption]]:
-        expected_header_end = line_index + len(AgeclassheaderArgs)
-        assert (
-            "==" in self._file_content[line_index]
-        ), "Expected '==' at start of AGECLASS file part."
-        # get last line of header with information on number of instances to follow
-        expected_instances = int(
-            self._file_content[expected_header_end - 1].strip().split(" ")[0]
-        )
-        expected_end = expected_header_end + expected_instances * len(
-            AgeclassinstanceArgs
-        )
-        assert (
-            "==" in self._file_content[expected_end]
-        ), "Expected line with '==' after AGECLASS file part"
-        ageclass = []
-        line_index, ageclass_option = self._line_reader(line_index, AgeclassheaderArgs)
-        ageclass.append(ageclass_option)
-        for _ in range(expected_instances):
-            line_index, ageclass_option = self._line_reader(
-                line_index, AgeclassinstanceArgs
-            )
-            ageclass.append(ageclass_option)
-        return line_index, ageclass
+        Reader = AgeclassReader(self._file_content, line_index)
+        return Reader.read()
 
     def read_outgrid(self, line_index: int) -> Tuple[int, List[FlexWrfOption]]:
-        expected_header_end = line_index + len(OutgridheaderArgs)
-        assert (
-            "==" in self._file_content[line_index]
-        ), "Expected '==' at start of AGECLASS file part."
-        # get last line of header with information on number of instances to follow
-        expected_instances = int(
-            self._file_content[expected_header_end - 1].strip().split(" ")[0]
-        )
-        expected_end = expected_header_end + expected_instances * len(
-            OutgridinstanceArgs
-        )
-        assert (
-            "==" in self._file_content[expected_end]
-        ), "Expected line with '==' after AGECLASS file part"
-        outgrid = []
-        line_index, outgrid_option = self._line_reader(line_index, OutgridheaderArgs)
-        outgrid.append(outgrid_option)
-        for _ in range(expected_instances):
-            line_index, outgrid_option = self._line_reader(
-                line_index, OutgridinstanceArgs
-            )
-            outgrid.append(outgrid_option)
-        return line_index, outgrid
+        Reader = OutgridReader(self._file_content, line_index)
+        return Reader.read()
+
+    def read_outgridnest(self, line_index: int) -> Tuple[int, List[FlexWrfOption]]:
+        Reader = OutgridnestReader(self._file_content, line_index)
+        return Reader.read()
+
+    def read_receptor(self, line_index: int) -> Tuple[int, List[FlexWrfOption]]:
+        Reader = ReceptorReader(self._file_content, line_index)
+        return Reader.read()
+
+    def read_species(self, line_index: int) -> Tuple[int, List[FlexWrfOption]]:
+        Reader = SpeciesReader(self._file_content, line_index)
+        return Reader.read()
+
+    def read_releases(self, line_index: int) -> Tuple[int, List[FlexWrfOption]]:
+        Reader = ReleasesReader(self._file_content, line_index)
+        return Reader.read()
