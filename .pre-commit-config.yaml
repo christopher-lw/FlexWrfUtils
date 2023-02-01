@@ -3,6 +3,7 @@ repos:
     rev: 22.12.0
     hooks:
     -   id: black
+        exclude: file_examples
 
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
@@ -10,12 +11,13 @@ repos:
     -   id: check-yaml
     -   id: end-of-file-fixer
     -   id: trailing-whitespace
+        exclude: file_examples
 
 -   repo: https://github.com/pycqa/flake8
     rev: 6.0.0
     hooks:
     -   id: flake8
-
+        exclude: file_examples
 -   repo: local
     hooks:
     -   id: run-tests
@@ -23,3 +25,4 @@ repos:
         name: Run tests
         entry: ./run_tests.sh
         stages: [commit]
+        exclude: file_examples
