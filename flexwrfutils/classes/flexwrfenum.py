@@ -139,7 +139,7 @@ class AgeclassinstanceArgs(FlexWrfEnum):
     ) = "    #             SSSSSS  (int)    age class in SSSSS seconds"
 
 
-class OutgridArgs(FlexWrfEnum):
+class OutgridheaderArgs(FlexWrfEnum):
     START_DELIMITER = (
         start_delimiter
     ) = "=====================FORMER OUTGRID FILE==================="
@@ -167,7 +167,7 @@ class OutgridArgs(FlexWrfEnum):
     NUMZGRID = numzgrid = "  #             NUMZGRID        number of vertical levels"
 
 
-class OutgridlevelArgs(FlexWrfEnum):
+class OutgridinstanceArgs(FlexWrfEnum):
     LEVEL = level = "  #            LEVEL           height of level (upper boundary)"
 
 
@@ -270,3 +270,16 @@ class ReleasesinstancexmassArgs(FlexWrfEnum):
 
 class ReleasesinstancenameArgs(FlexWrfEnum):
     NAME = name = "    #              NAME OF RELEASE LOCATION"
+
+
+####### META OPTIONS #########
+
+# class Option(Enum):
+#     PATHNAMES = pathnames = [PathnamesArgs]
+#     COMMAND = command = [CommandArgs]
+#     AGECLASS = ageclass = [AgeclassheaderArgs, AgeclassinstanceArgs]
+#     OUTGRID = outgrid = [OutgridArgs, OutgridlevelArgs]
+#     OUTGRID_NEST = outgrid_nest = [OutgridnestArgs]
+#     RECEPTOR = receptor = [ReceptorheaderArgs]
+#     SPECIES = species = [SpeciesheaderArgs, SpeciesinstanceArgs]
+#     RELEASES = releases = [ReleasesheaderArgs, ReleaseslinkArgs, ReleasesnumpointArgs, ReleasesinstanceArgs, ReleasesinstancexmassArgs, ReleasesinstancenameArgs]
