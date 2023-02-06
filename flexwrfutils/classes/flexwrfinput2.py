@@ -6,10 +6,10 @@ import pandas as pd
 
 
 class BaseArgument:
-    def __init__(self):
-        self._type = None
+    def __init__(self, type=None, dummyline=None):
+        self._type = type
+        self._dummyline = dummyline
         self._value = None
-        self._dummyline = None
 
     @property
     def value(self):
@@ -35,8 +35,8 @@ class StaticArgument(BaseArgument):
 
 
 class DynamicArgument(BaseArgument):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, type=None, dummyline=None):
+        super().__init__(type, dummyline)
         self._n_values = 0
         self._value: List[self._type] = []
 
@@ -67,10 +67,9 @@ class DynamicArgument(BaseArgument):
 
 
 class DatetimeArgument(StaticArgument):
-    def __init__(self):
-        self._type = str
-        self._value = None
-        self._dummyline = "    #  YYYYMMDD HHMISS   "
+    def __init__(self, dummyline=None):
+        super().__init__(dummyline)
+        self.time = str
 
     def linecaster(self, line: str) -> str:
         decoded_line = line.strip().split(" ")[:2]
@@ -91,15 +90,20 @@ class DatetimeArgument(StaticArgument):
 
 
 class StaticSpecifierArgument(StaticArgument):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, type=None, dummyline=None):
+        super().__init__(type, dummyline)
         self._type = int
         self.children = []
 
 
 class DynamicSpecifierArgument(BaseArgument):
-    def __init__(self, specifier: StaticSpecifierArgument):
-        super().__init__()
+    def __init__(
+        self,
+        specifier: StaticSpecifierArgument,
+        type=None,
+        dummyline=None,
+    ):
+        super().__init__(type, dummyline)
         self.specifier = specifier
         self._value: List[self._type] = []
 
@@ -138,281 +142,6 @@ class DynamicSpecifierArgument(BaseArgument):
 ############# PATHNAMES #############
 #####################################
 
-
-class OutputPath(StaticArgument):
-    def __init__(self):
-        self._type = Path
-        self._value = None
-        self._dummyline = "#/\n"
-
-
-class InputPath(DynamicArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = Path
-        self._dummyline = "#/\n"
-
-
-#####################################
-############## COMMAND ##############
-#####################################
-
-
-class Ldirect(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                LDIRECT:          1 for forward simulation, -1 for backward simulation\n"
-
-
-class RunStart(DatetimeArgument):
-    def __init__(self):
-        super().__init__()
-        self._dummyline = "    #  YYYYMMDD HHMISS   beginning date of simulation\n"
-
-
-class RunStop(DatetimeArgument):
-    def __init__(self):
-        super().__init__()
-        self._dummyline = "    #  YYYYMMDD HHMISS   ending date of simulation\n"
-
-
-class OutputRate(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = (
-            "    #             SSSSS  (int)      output every SSSSS seconds"
-        )
-
-
-class AverageRate(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #             SSSSS  (int)      time average of output (in SSSSS seconds)"
-
-
-class SamplingRate(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #              SSSSS  (int)      sampling rate of output (in SSSSS seconds)"
-
-
-class SplittingTime(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #        SSSSS  (int)      time constant for particle splitting (in seconds)"
-
-
-class SyncronizationInterval(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #              SSSSS  (int)      synchronisation interval of flexpart (in seconds)"
-
-
-class Ctl(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = float
-        self._dummyline = "    #.              CTL    (real)     factor by which time step must be smaller than tl"
-
-
-class Ifine(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #               IFINE  (int)      decrease of time step for vertical motion by factor ifine"
-
-
-class Iout(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                IOUT              1 concentration, 2 mixing ratio, 3 both, 4 plume traject, 5=1+4"
-
-
-class Ipout(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                IPOUT             particle dump: 0 no, 1 every output interval, 2 only at end"
-
-
-class Lsubgrid(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                LSUBGRID          subgrid terrain effect parameterization: 1 yes, 0 no"
-
-
-class Lconvection(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = (
-            "    #                LCONVECTION       convection: 3 yes, 0 no"
-        )
-
-
-class DtConv(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = float
-        self._dummyline = "    #.            DT_CONV  (real)   time interval to call convection, seconds"
-
-
-class Lagespectra(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = (
-            "    #                LAGESPECTRA       age spectra: 1 yes, 0 no"
-        )
-
-
-class Ipin(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                IPIN              continue simulation with dumped particle data: 1 yes, 0 no"
-
-
-class Iflux(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = (
-            "    #                IFLUX             calculate fluxes: 1 yes, 0 no"
-        )
-
-
-class Ioutputforeachrel(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                IOUTPUTFOREACHREL CREATE AN OUPUT FILE FOR EACH RELEASE LOCATION: 1 YES, 0 NO"
-
-
-class Mdomainfill(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                MDOMAINFILL       domain-filling trajectory option: 1 yes, 0 no, 2 strat. o3 tracer"
-
-
-class IndSource(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                IND_SOURCE        1=mass unit , 2=mass mixing ratio unit"
-
-
-class IndReceptor(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                IND_RECEPTOR      1=mass unit , 2=mass mixing ratio unit"
-
-
-class NestedOutput(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                NESTED_OUTPUT     shall nested output be used? 1 yes, 0 no"
-
-
-class LinitCond(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                LINIT_COND   INITIAL COND. FOR BW RUNS: 0=NO,1=MASS UNIT,2=MASS MIXING RATIO UNIT"
-
-
-class TurbOption(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                TURB_OPTION       0=no turbulence; 1=diagnosed as in flexpart_ecmwf; 2 and 3=from tke."
-
-
-class LuOption(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                LU_OPTION         0=old landuse (IGBP.dat); 1=landuse from WRF"
-
-
-class CblScheme(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = (
-            "    #                CBL SCHEME        0=no, 1=yes. works if TURB_OPTION=1"
-        )
-
-
-class SfcOption(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                SFC_OPTION        0=default computation of u*, hflux, pblh, 1=from wrf"
-
-
-class WindOption(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                WIND_OPTION       0=snapshot winds, 1=mean winds,2=snapshot eta-dot,-1=w based on divergence"
-
-
-class TimeOption(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                TIME_OPTION       1=correction of time validity for time-average wind,  0=no need"
-
-
-class OutgridCoord(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                OUTGRID_COORD     0=wrf grid(meters), 1=regular lat/lon grid"
-
-
-class ReleaseCoord(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                RELEASE_COORD     0=wrf grid(meters), 1=regular lat/lon grid"
-
-
-class Iouttype(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                IOUTTYPE          0=default binary, 1=ascii (for particle dump only),2=netcdf"
-
-
-class Nctimerec(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = "    #                NCTIMEREC (int)   Time frames per output file, only used for netcdf"
-
-
-class Verbose(StaticArgument):
-    def __init__(self):
-        super().__init__()
-        self._type = int
-        self._dummyline = (
-            "    #                VERBOSE           VERBOSE MODE,0=minimum, 100=maximum"
-        )
-
-
 #####################################
 ############# Ageclasses #############
 #####################################
@@ -442,9 +171,9 @@ class AgeclassesInstance(DynamicSpecifierArgument):
 
 class Pathnames:
     def __init__(self):
-        self._outputpath = OutputPath()
-        self._inputpath = InputPath()
-        self._availablepath = InputPath()
+        self._outputpath = StaticArgument(type=Path, dummyline="#/\n")
+        self._inputpath = DynamicArgument(type=Path, dummyline="#/\n")
+        self._availablepath = DynamicArgument(type=Path, dummyline="#/\n")
 
     def read(self, f: TextIO):
         f.readline()
@@ -488,47 +217,150 @@ class Pathnames:
 
 class Command:
     def __init__(self):
-        self._ldirect = Ldirect()
-        self._runstart = RunStart()
-        self._runstop = RunStop()
-        self._outputrate = OutputRate()
-        self._averagerate = AverageRate()
-        self._samplingrate = SamplingRate()
-        self._splittingtime = SplittingTime()
-        self._syncronizationinterval = SyncronizationInterval()
-        self._ctl = Ctl()
-        self._ifine = Ifine()
-        self._iout = Iout()
-        self._ipout = Ipout()
-        self._lsubgrid = Lsubgrid()
-        self._lconvection = Lconvection()
-        self._dtconv = DtConv()
-        self._lagespectra = Lagespectra()
-        self._ipin = Ipin()
-        self._iflux = Iflux()
-        self._ioutputforeachrel = Ioutputforeachrel()
-        self._mdomainfill = Mdomainfill()
-        self._indsource = IndSource()
-        self._indreceptor = IndReceptor()
-        self._nestedoutput = NestedOutput()
-        self._linitcond = LinitCond()
-        self._turboption = TurbOption()
-        self._luoption = LuOption()
-        self._cblscheme = CblScheme()
-        self._sfcoption = SfcOption()
-        self._windoption = WindOption()
-        self._timeoption = TimeOption()
-        self._outgridcoord = OutgridCoord()
-        self._releasecoord = ReleaseCoord()
-        self._iouttype = Iouttype()
-        self._nctimerec = Nctimerec()
-        self._verbose = Verbose()
+        self._ldirect = StaticArgument(
+            type=int,
+            dummyline="    #                LDIRECT:          1 for forward simulation, -1 for backward simulation\n",
+        )
+        self._start = DatetimeArgument(
+            dummyline="    #  YYYYMMDD HHMISS   beginning date of simulation\n"
+        )
+        self._stop = DatetimeArgument(
+            dummyline="    #  YYYYMMDD HHMISS   beginning date of simulation\n"
+        )
+        self._outputrate = StaticArgument(
+            type=int,
+            dummyline="    #             SSSSS  (int)      output every SSSSS seconds\n",
+        )
+        self._averagerate = StaticArgument(
+            type=int,
+            dummyline="    #             SSSSS  (int)      time average of output (in SSSSS seconds)\n",
+        )
+        self._samplingrate = StaticArgument(
+            type=int,
+            dummyline="    #              SSSSS  (int)      sampling rate of output (in SSSSS seconds)\n",
+        )
+        self._splittingtime = StaticArgument(
+            type=int,
+            dummyline="    #        SSSSS  (int)      time constant for particle splitting (in seconds)\n",
+        )
+        self._syncronizationinterval = StaticArgument(
+            type=int,
+            dummyline="    #              SSSSS  (int)      synchronisation interval of flexpart (in seconds)\n",
+        )
+        self._ctl = StaticArgument(
+            type=float,
+            dummyline="    #.              CTL    (real)     factor by which time step must be smaller than tl\n",
+        )
+        self._ifine = StaticArgument(
+            type=int,
+            dummyline="    #               IFINE  (int)      decrease of time step for vertical motion by factor ifine\n",
+        )
+        self._iout = StaticArgument(
+            type=int,
+            dummyline="    #                IOUT              1 concentration, 2 mixing ratio, 3 both, 4 plume traject, 5=1+4\n",
+        )
+        self._ipout = StaticArgument(
+            type=int,
+            dummyline="    #                IPOUT             particle dump: 0 no, 1 every output interval, 2 only at end\n",
+        )
+        self._lsubgrid = StaticArgument(
+            type=int,
+            dummyline="    #                LSUBGRID          subgrid terrain effect parameterization: 1 yes, 0 no\n",
+        )
+        self._lconvection = StaticArgument(
+            type=int,
+            dummyline="    #                LCONVECTION       convection: 3 yes, 0 no\n",
+        )
+        self._dtconv = StaticArgument(
+            type=float,
+            dummyline="    #.            DT_CONV  (real)   time interval to call convection, seconds\n",
+        )
+        self._lagespectra = StaticArgument(
+            type=int,
+            dummyline="    #                LAGESPECTRA       age spectra: 1 yes, 0 no\n",
+        )
+        self._ipin = StaticArgument(
+            type=int,
+            dummyline="    #                IPIN              continue simulation with dumped particle data: 1 yes, 0 no\n",
+        )
+        self._iflux = StaticArgument(
+            type=int,
+            dummyline="    #                IFLUX             calculate fluxes: 1 yes, 0 no\n",
+        )
+        self._ioutputforeachrel = StaticArgument(
+            type=int,
+            dummyline="    #                IOUTPUTFOREACHREL CREATE AN OUPUT FILE FOR EACH RELEASE LOCATION: 1 YES, 0 NO\n",
+        )
+        self._mdomainfill = StaticArgument(
+            type=int,
+            dummyline="    #                MDOMAINFILL       domain-filling trajectory option: 1 yes, 0 no, 2 strat. o3 tracer\n",
+        )
+        self._indsource = StaticArgument(
+            type=int,
+            dummyline="    #                IND_SOURCE        1=mass unit , 2=mass mixing ratio unit\n",
+        )
+        self._indreceptor = StaticArgument(
+            type=int,
+            dummyline="    #                IND_RECEPTOR      1=mass unit , 2=mass mixing ratio unit\n",
+        )
+        self._nestedoutput = StaticArgument(
+            type=int,
+            dummyline="    #                NESTED_OUTPUT     shall nested output be used? 1 yes, 0 no\n",
+        )
+        self._linitcond = StaticArgument(
+            type=int,
+            dummyline="    #                LINIT_COND   INITIAL COND. FOR BW RUNS: 0=NO,1=MASS UNIT,2=MASS MIXING RATIO UNIT\n",
+        )
+        self._turboption = StaticArgument(
+            type=int,
+            dummyline="    #                TURB_OPTION       0=no turbulence; 1=diagnosed as in flexpart_ecmwf; 2 and 3=from tke.\n",
+        )
+        self._luoption = StaticArgument(
+            type=int,
+            dummyline="    #                LU_OPTION         0=old landuse (IGBP.dat); 1=landuse from WRF\n",
+        )
+        self._cblscheme = StaticArgument(
+            type=int,
+            dummyline="    #                CBL SCHEME        0=no, 1=yes. works if TURB_OPTION=1\n",
+        )
+        self._sfcoption = StaticArgument(
+            type=int,
+            dummyline="    #                SFC_OPTION        0=default computation of u*, hflux, pblh, 1=from wrf\n",
+        )
+        self._windoption = StaticArgument(
+            type=int,
+            dummyline="    #                WIND_OPTION       0=snapshot winds, 1=mean winds,2=snapshot eta-dot,-1=w based on divergence\n",
+        )
+        self._timeoption = StaticArgument(
+            type=int,
+            dummyline="    #                TIME_OPTION       1=correction of time validity for time-average wind,  0=no need\n",
+        )
+        self._outgridcoord = StaticArgument(
+            type=int,
+            dummyline="    #                OUTGRID_COORD     0=wrf grid(meters), 1=regular lat/lon grid\n",
+        )
+        self._releasecoord = StaticArgument(
+            type=int,
+            dummyline="    #                RELEASE_COORD     0=wrf grid(meters), 1=regular lat/lon grid\n",
+        )
+        self._iouttype = StaticArgument(
+            type=int,
+            dummyline="    #                IOUTTYPE          0=default binary, 1=ascii (for particle dump only),2=netcdf\n",
+        )
+        self._nctimerec = StaticArgument(
+            type=int,
+            dummyline="    #                NCTIMEREC (int)   Time frames per output file, only used for netcdf\n",
+        )
+        self._verbose = StaticArgument(
+            type=int,
+            dummyline="    #                VERBOSE           VERBOSE MODE,0=minimum, 100=maximum\n",
+        )
 
     def read(self, f: TextIO):
         f.readline()
         self.ldirect.read(f)
-        self.runstart.read(f)
-        self.runstop.read(f)
+        self.start.read(f)
+        self.stop.read(f)
         self.outputrate.read(f)
         self.averagerate.read(f)
         self.samplingrate.read(f)
@@ -571,20 +403,20 @@ class Command:
         self.ldirect.value = value
 
     @property
-    def runstart(self):
-        return self._runstart
+    def start(self):
+        return self._start
 
-    @runstart.setter
-    def runstart(self, value):
-        self.runstart.value = value
+    @start.setter
+    def start(self, value):
+        self.start.value = value
 
     @property
-    def runstop(self):
-        return self._runstop
+    def stop(self):
+        return self._stop
 
-    @runstop.setter
-    def runstop(self, value):
-        self.runstop.value = value
+    @stop.setter
+    def stop(self, value):
+        self.stop.value = value
 
     @property
     def outputrate(self):
@@ -843,17 +675,51 @@ class Command:
         self.verbose.value = value
 
 
+class Ageclasses:
+    def __init__(self):
+        self._nageclasses = StaticSpecifierArgument(
+            dummyline="    #                NAGECLASS        number of age classes\n"
+        )
+        self._ageclasses = DynamicSpecifierArgument(
+            self._nageclasses,
+            type=int,
+            dummyline="    #             SSSSSS  (int)    age class in SSSSS seconds\n",
+        )
+
+    def read(self, f):
+        f.readline()
+        self.nageclasses.read(f)
+        self.ageclasses.read(f)
+
+    @property
+    def nageclasses(self):
+        return self._nageclasses
+
+    @nageclasses.setter
+    def nageclasses(self, value):
+        self.nageclasses.value = value
+
+    @property
+    def ageclasses(self):
+        return self._ageclasses
+
+    @ageclasses.setter
+    def ageclasses(self, value):
+        self.ageclasses.value = value
+
+
 class FlexwrfInput:
     def __init__(self):
         self._pathnames = Pathnames()
         self._command = Command()
-        self._ageclasses = None
+        self._ageclasses = Ageclasses()
 
     def read(self, file_path: Union[str, Path]):
         file_path = Path(file_path)
         with file_path.open("r") as f:
             self.pathnames.read(f)
             self.command.read(f)
+            self.ageclasses.read(f)
 
     @property
     def pathnames(self):

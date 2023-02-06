@@ -1,8 +1,8 @@
 from flexwrfutils.classes.flexwrfinput2 import (
-    OutputPath,
+    StaticArgument,
+    DynamicArgument,
     Nageclasses,
     AgeclassesInstance,
-    InputPath,
     DatetimeArgument,
     FlexwrfInput,
 )
@@ -34,7 +34,7 @@ def ageclasses(example_path):
 
 @pytest.fixture
 def inputpath(example_path):
-    inputpath = InputPath()
+    inputpath = DynamicArgument(type=Path, dummyline="#/\n")
     with example_path.open() as f:
         for i in range(2):
             f.readline()
@@ -65,19 +65,19 @@ def flexwrfinput():
 
 class Test_OutputPath:
     def test_linecaster(self):
-        Argument = OutputPath()
+        Argument = StaticArgument(type=Path, dummyline="#/\n")
         line = "  test/path  \n"
         assert Argument.linecaster(line) == Path("test/path")
 
     def test_line(self, example_path):
-        Argument = OutputPath()
+        Argument = StaticArgument(type=Path, dummyline="#/\n")
         with example_path.open() as f:
             f.readline()
             Argument.read(f)
         assert Argument.line == "/scratch2/portfolios/BMC/stela/jbrioude/test_depo1/\n"
 
     def test_read(self, example_path):
-        Argument = OutputPath()
+        Argument = StaticArgument(type=Path, dummyline="#/\n")
 
         with example_path.open() as f:
             f.readline()
@@ -145,14 +145,14 @@ class Test_Datetime:
 
 
 class Test_FlexwrfInput:
-    @pytest.mark.xfail
+    # @pytest.mark.xfail
     def test_read(self, example_path, flexwrfinput):
         flexwrfinput.read(example_path)
         assert flexwrfinput.pathnames.outputpath.value == Path(
             "/scratch2/portfolios/BMC/stela/jbrioude/test_depo1/"
         )
         assert flexwrfinput.command.ldirect.value == 1
-        assert len(flexwrfinput.ageclasses) == 2
+        assert len(flexwrfinput.ageclasses.ageclasses) == 2
 
     def test_set(self, example_path, flexwrfinput):
         flexwrfinput.read(example_path)
