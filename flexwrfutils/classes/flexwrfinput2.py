@@ -127,41 +127,11 @@ class DynamicSpecifierArgument(BaseArgument):
 
     def append(self, value):
         self._value.append(value)
-        self.specifier.value += 1
+        self.specifier.value = len(self._value)
 
     def remove(self, index):
-        self._value.remove(self.value[-1])
-        self.specifier.value -= 1
-
-
-#####################################
-##### Actual Argument Classes #######
-#####################################
-
-#####################################
-############# PATHNAMES #############
-#####################################
-
-#####################################
-############# Ageclasses #############
-#####################################
-
-
-class Nageclasses(StaticSpecifierArgument):
-    def __init__(self):
-        super().__init__()
-        self._dummyline = (
-            "    #                NAGECLASS        number of age classes\n"
-        )
-
-
-class AgeclassesInstance(DynamicSpecifierArgument):
-    def __init__(self, specifier):
-        super().__init__(specifier)
-        self._type = int
-        self._dummyline = (
-            "    #             SSSSSS  (int)    age class in SSSSS seconds\n"
-        )
+        self._value.remove(self.value[index])
+        self.specifier.value = len(self._value)
 
 
 #####################################
@@ -708,11 +678,295 @@ class Ageclasses:
         self.ageclasses.value = value
 
 
+class Outgrid:
+    def __init__(self):
+        self._outlonleft = StaticArgument(
+            type=float,
+            dummyline="   #            OUTLONLEFT      geograhical longitude of lower left corner of output grid\n",
+        )
+        self._outlatlower = StaticArgument(
+            type=float,
+            dummyline="    #              OUTLATLOWER     geographical latitude of lower left corner of output grid\n",
+        )
+        self._numxgrid = StaticArgument(
+            type=int,
+            dummyline="    #               NUMXGRID        number of grid points in x direction (= # of cells )\n",
+        )
+        self._numygrid = StaticArgument(
+            type=int,
+            dummyline="    #               NUMYGRID        number of grid points in y direction (= # of cells )\n",
+        )
+        self._outgriddef = StaticArgument(
+            type=int,
+            dummyline="    #                OUTGRIDDEF      outgrid defined 0=using grid distance, 1=upperright corner coordinate\n",
+        )
+        self._dxoutlon = StaticArgument(
+            type=float,
+            dummyline="    #           DXOUTLON        grid distance in x direction or upper right corner of output grid\n",
+        )
+        self._dyoutlon = StaticArgument(
+            type=float,
+            dummyline="    #           DYOUTLON        grid distance in y direction or upper right corner of output grid\n",
+        )
+        self._numzgrid = StaticSpecifierArgument(
+            dummyline="    #                NUMZGRID        number of vertical levels\n"
+        )
+        self._levels = DynamicSpecifierArgument(
+            self._numzgrid, type=float, dummyline="height of level (upper boundary)\n"
+        )
+
+    def read(self, f: TextIO):
+        f.readline()
+        self.outlonleft.read(f)
+        self.outlatlower.read(f)
+        self.numxgrid.read(f)
+        self.numygrid.read(f)
+        self.outgriddef.read(f)
+        self.dxoutlon.read(f)
+        self.dyoutlon.read(f)
+        self.numzgrid.read(f)
+        self.levels.read(f)
+
+    @property
+    def outlonleft(self):
+        return self._outlonleft
+
+    @outlonleft.setter
+    def outlonleft(self, value):
+        self.outlonleft.value = value
+
+    @property
+    def outlatlower(self):
+        return self._outlatlower
+
+    @outlatlower.setter
+    def outlatlower(self, value):
+        self.outlatlower.value = value
+
+    @property
+    def numxgrid(self):
+        return self._numxgrid
+
+    @numxgrid.setter
+    def numxgrid(self, value):
+        self.numxgrid.value = value
+
+    @property
+    def numygrid(self):
+        return self._numygrid
+
+    @numygrid.setter
+    def numygrid(self, value):
+        self.numygrid.value = value
+
+    @property
+    def outgriddef(self):
+        return self._outgriddef
+
+    @outgriddef.setter
+    def outgriddef(self, value):
+        self.outgriddef.value = value
+
+    @property
+    def dxoutlon(self):
+        return self._dxoutlon
+
+    @dxoutlon.setter
+    def dxoutlon(self, value):
+        self.dxoutlon.value = value
+
+    @property
+    def dyoutlon(self):
+        return self._dyoutlon
+
+    @dyoutlon.setter
+    def dyoutlon(self, value):
+        self.dyoutlon.value = value
+
+    @property
+    def numzgrid(self):
+        return self._numzgrid
+
+    @numzgrid.setter
+    def numzgrid(self, value):
+        self.numzgrid.value = value
+
+    @property
+    def levels(self):
+        return self._levels
+
+    @levels.setter
+    def levels(self, value):
+        self.levels.value = value
+
+
+class OutgridNest:
+    def __init__(self):
+        self._outlonleft = StaticArgument(
+            type=float,
+            dummyline="   #            OUTLONLEFT      geograhical longitude of lower left corner of output grid\n",
+        )
+        self._outlatlower = StaticArgument(
+            type=float,
+            dummyline="    #              OUTLATLOWER     geographical latitude of lower left corner of output grid\n",
+        )
+        self._numxgrid = StaticArgument(
+            type=int,
+            dummyline="    #               NUMXGRID        number of grid points in x direction (= # of cells )\n",
+        )
+        self._numygrid = StaticArgument(
+            type=int,
+            dummyline="    #               NUMYGRID        number of grid points in y direction (= # of cells )\n",
+        )
+        self._outgriddef = StaticArgument(
+            type=int,
+            dummyline="    #                OUTGRIDDEF      outgrid defined 0=using grid distance, 1=upperright corner coordinate\n",
+        )
+        self._dxoutlon = StaticArgument(
+            type=float,
+            dummyline="    #           DXOUTLON        grid distance in x direction or upper right corner of output grid\n",
+        )
+        self._dyoutlon = StaticArgument(
+            type=float,
+            dummyline="    #           DYOUTLON        grid distance in y direction or upper right corner of output grid\n",
+        )
+
+    def read(self, f: TextIO):
+        f.readline()
+        self.outlonleft.read(f)
+        self.outlatlower.read(f)
+        self.numxgrid.read(f)
+        self.numygrid.read(f)
+        self.outgriddef.read(f)
+        self.dxoutlon.read(f)
+        self.dyoutlon.read(f)
+
+    @property
+    def outlonleft(self):
+        return self._outlonleft
+
+    @outlonleft.setter
+    def outlonleft(self, value):
+        self.outlonleft.value = value
+
+    @property
+    def outlatlower(self):
+        return self._outlatlower
+
+    @outlatlower.setter
+    def outlatlower(self, value):
+        self.outlatlower.value = value
+
+    @property
+    def numxgrid(self):
+        return self._numxgrid
+
+    @numxgrid.setter
+    def numxgrid(self, value):
+        self.numxgrid.value = value
+
+    @property
+    def numygrid(self):
+        return self._numygrid
+
+    @numygrid.setter
+    def numygrid(self, value):
+        self.numygrid.value = value
+
+    @property
+    def outgriddef(self):
+        return self._outgriddef
+
+    @outgriddef.setter
+    def outgriddef(self, value):
+        self.outgriddef.value = value
+
+    @property
+    def dxoutlon(self):
+        return self._dxoutlon
+
+    @dxoutlon.setter
+    def dxoutlon(self, value):
+        self.dxoutlon.value = value
+
+    @property
+    def dyoutlon(self):
+        return self._dyoutlon
+
+    @dyoutlon.setter
+    def dyoutlon(self, value):
+        self.dyoutlon.value = value
+
+
+class Receptor:
+    def __init__(self):
+        self._numreceptor = StaticSpecifierArgument(
+            dummyline="    #                NUMRECEPTOR     number of receptors\n"
+        )
+        self._receptor = DynamicSpecifierArgument(
+            self._numreceptor, type=str, dummyline="    #             RECEPTOR\n"
+        )
+        self._x = DynamicSpecifierArgument(
+            self._numreceptor, type=float, dummyline="    #             X\n"
+        )
+        self._y = DynamicSpecifierArgument(
+            self._numreceptor, type=float, dummyline="    #             y\n"
+        )
+
+    def read(self, f: TextIO):
+        f.readline()
+        self.numreceptor.read(f)
+        for i in range(self.numreceptor.value):
+            self.receptor.readline(f)
+            self.x.readline(f)
+            self.y.readline(f)
+
+    @property
+    def numreceptor(self):
+        return self._numreceptor
+
+    @numreceptor.setter
+    def numreceptor(self, value):
+        self.numreceptor.value = value
+
+    @property
+    def receptor(self):
+        return self._receptor
+
+    @receptor.setter
+    def receptor(self, value):
+        self.receptor.value = value
+
+    @property
+    def x(self):
+        return self._x
+
+    @x.setter
+    def x(self, value):
+        self.x.value = value
+
+    @property
+    def y(self):
+        return self._y
+
+    @y.setter
+    def y(self, value):
+        self.y.value = value
+
+
+#####################################
+##### Final FlexwrfInput Class ######
+#####################################
+
+
 class FlexwrfInput:
     def __init__(self):
         self._pathnames = Pathnames()
         self._command = Command()
         self._ageclasses = Ageclasses()
+        self._outgrid = Outgrid()
+        self._outgrid_nest = OutgridNest()
+        self._receptor = Receptor()
 
     def read(self, file_path: Union[str, Path]):
         file_path = Path(file_path)
@@ -720,6 +974,9 @@ class FlexwrfInput:
             self.pathnames.read(f)
             self.command.read(f)
             self.ageclasses.read(f)
+            self.outgrid.read(f)
+            self.outgrid_nest.read(f)
+            self.receptor.read(f)
 
     @property
     def pathnames(self):
@@ -732,3 +989,15 @@ class FlexwrfInput:
     @property
     def ageclasses(self):
         return self._ageclasses
+
+    @property
+    def outgrid(self):
+        return self._outgrid
+
+    @property
+    def outgrid_nest(self):
+        return self._outgrid_nest
+
+    @property
+    def receptor(self):
+        return self._receptor

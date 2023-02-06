@@ -1,8 +1,8 @@
 from flexwrfutils.classes.flexwrfinput2 import (
     StaticArgument,
     DynamicArgument,
-    Nageclasses,
-    AgeclassesInstance,
+    StaticSpecifierArgument,
+    DynamicSpecifierArgument,
     DatetimeArgument,
     FlexwrfInput,
 )
@@ -20,8 +20,14 @@ def example_path():
 
 @pytest.fixture
 def ageclasses(example_path):
-    Nage = Nageclasses()
-    Ageinstance = AgeclassesInstance(Nage)
+    Nage = StaticSpecifierArgument(
+        dummyline="    #                NAGECLASS        number of age classes\n"
+    )
+    Ageinstance = DynamicSpecifierArgument(
+        Nage,
+        type=int,
+        dummyline="    #             SSSSSS  (int)    age class in SSSSS seconds\n",
+    )
     with example_path.open() as f:
         for i in range(42):
             f.readline()
@@ -153,6 +159,9 @@ class Test_FlexwrfInput:
         )
         assert flexwrfinput.command.ldirect.value == 1
         assert len(flexwrfinput.ageclasses.ageclasses) == 2
+        assert len(flexwrfinput.outgrid.levels) == 3
+        assert flexwrfinput.outgrid_nest.numxgrid.value == 24
+        assert len(flexwrfinput.receptor.receptor) == 0
 
     def test_set(self, example_path, flexwrfinput):
         flexwrfinput.read(example_path)
