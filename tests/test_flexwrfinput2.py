@@ -1,8 +1,13 @@
 from flexwrfutils.classes.flexwrfinput2 import (
     OutputPath,
-    Nageclass,
-    AgeclassInstance,
+    Nageclasses,
+    AgeclassesInstance,
+    InputPath,
+    DatetimeArgument,
+    FlexwrfInput,
 )
+import numpy as np
+from datetime import datetime
 import pytest
 from pathlib import Path
 
@@ -15,8 +20,8 @@ def example_path():
 
 @pytest.fixture
 def ageclasses(example_path):
-    Nage = Nageclass()
-    Ageinstance = AgeclassInstance(Nage)
+    Nage = Nageclasses()
+    Ageinstance = AgeclassesInstance(Nage)
     with example_path.open() as f:
         for i in range(42):
             f.readline()
@@ -27,9 +32,30 @@ def ageclasses(example_path):
     return Nage, Ageinstance
 
 
-# @pytest.fixture
-# def inputpath(example_path):
-#     inputpath = InputPath(n_values=0)
+@pytest.fixture
+def inputpath(example_path):
+    inputpath = InputPath()
+    with example_path.open() as f:
+        for i in range(2):
+            f.readline()
+        inputpath.readline(f)
+    return inputpath
+
+
+@pytest.fixture
+def datetimeinstance(example_path):
+    datetimeinstance = DatetimeArgument()
+    with example_path.open() as f:
+        for i in range(7):
+            f.readline()
+        datetimeinstance.read(f)
+    return datetimeinstance
+
+
+@pytest.fixture
+def flexwrfinput():
+    flexwrfinput = FlexwrfInput()
+    return flexwrfinput
 
 
 ####################################
@@ -92,3 +118,43 @@ class Test_Ageclass:
         Nage, Ageclasses = ageclasses
         Ageclasses.remove(0)
         assert len(Ageclasses) == Nage.value
+
+
+class Test_InputPath:
+    def test_readline(self, inputpath):
+        assert isinstance(inputpath.value, list)
+        assert isinstance(inputpath.value[0], Path)
+        assert len(inputpath) == 1
+
+
+class Test_Datetime:
+    def test_read(self, datetimeinstance):
+        assert len(datetimeinstance.value) == 15
+
+    def test_value_setter(self, datetimeinstance):
+        timestring = "20200101 101010"
+        timenp = np.datetime64("2020-01-01T10:10:10")
+        timedt = datetime(2020, 1, 1, 10, 10, 10)
+        datetimeinstance.value = timestring
+        valuestr = datetimeinstance.value
+        datetimeinstance.value = timenp
+        valuenp = datetimeinstance.value
+        datetimeinstance.value = timedt
+        valuedt = datetimeinstance.value
+        assert timestring == valuestr == valuenp == valuedt
+
+
+class Test_FlexwrfInput:
+    @pytest.mark.xfail
+    def test_read(self, example_path, flexwrfinput):
+        flexwrfinput.read(example_path)
+        assert flexwrfinput.pathnames.outputpath.value == Path(
+            "/scratch2/portfolios/BMC/stela/jbrioude/test_depo1/"
+        )
+        assert flexwrfinput.command.ldirect.value == 1
+        assert len(flexwrfinput.ageclasses) == 2
+
+    def test_set(self, example_path, flexwrfinput):
+        flexwrfinput.read(example_path)
+        flexwrfinput.pathnames.outputpath = "test/path"
+        assert flexwrfinput.pathnames.outputpath.value == Path("test/path")
