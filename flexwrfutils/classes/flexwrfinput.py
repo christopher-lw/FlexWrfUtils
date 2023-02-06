@@ -116,6 +116,7 @@ class PathnamesReader(OptionReader):
             self.read_static(PathnamesinstanceArgs)
         self.read_static(PathnamesfooterArgs)
         self.check_end(PathnamesfooterArgs)
+        return self._line_index, self._options
 
 
 class CommandReader(OptionReader):
@@ -177,6 +178,7 @@ class SpeciesReader(OptionReader):
         self.read_static(SpeciesheaderArgs)
         self.read_flexible(SpeciesinstanceArgs, -2)
         self.check_end(SpeciesinstanceArgs)
+        return self._line_index, self._options
 
 
 class ReleasesReader(OptionReader):
@@ -204,6 +206,21 @@ class ReleasesReader(OptionReader):
 class FlexWrfInput:
     def __init__(self, file_content: List[str]):
         self._file_content = file_content
+
+    def read(self):
+        reader_list = [
+            PathnamesReader,
+            CommandReader,
+            AgeclassReader,
+            OutgridReader,
+            OutgridnestReader,
+            ReceptorReader,
+            SpeciesReader,
+            ReleasesReader,
+        ]
+        line_index = 0
+        for Reader in reader_list:
+            line_index,
 
     def read_pathnames(self, line_index: int) -> Tuple[int, List[FlexWrfOption]]:
         Reader = PathnamesReader(self._file_content, line_index)

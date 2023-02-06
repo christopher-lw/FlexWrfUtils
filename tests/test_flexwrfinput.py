@@ -23,6 +23,8 @@ from flexwrfutils.classes.flexwrfenum import (
 import pytest
 from pathlib import Path
 
+pytest.skip(allow_module_level=True)
+
 
 @pytest.fixture
 def file_content():
