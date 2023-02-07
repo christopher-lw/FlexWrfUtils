@@ -215,6 +215,7 @@ class Test_FlexwrfInput:
         assert (
             len(flexwrfinput.species.weight) == flexwrfinput.species.numtable.value == 2
         )
+        assert flexwrfinput.releases.xmass.value[1][0] == 0.5e4
 
     def test_set(self, example_path, flexwrfinput):
         flexwrfinput.read(example_path)

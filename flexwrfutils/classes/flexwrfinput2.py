@@ -76,7 +76,6 @@ class DynamicArgument(BaseArgument):
 class DatetimeArgument(StaticArgument):
     def __init__(self, dummyline=None):
         super().__init__(dummyline)
-        self.time = str
 
     def linecaster(self, line: str) -> str:
         decoded_line = line.strip().split(" ")[:2]
@@ -141,6 +140,33 @@ class DynamicSpecifierArgument(BaseArgument):
         self.specifier.value = len(self._value)
 
 
+class DynamicDatetimeArgument(DynamicSpecifierArgument):
+    def __init__(
+        self,
+        specifier: StaticSpecifierArgument,
+        type=None,
+        dummyline=None,
+    ):
+        super().__init__(specifier, type, dummyline)
+
+    def linecaster(self, line: str) -> str:
+        decoded_line = line.strip().split(" ")[:2]
+        decoded_line = f"{decoded_line[0]} {decoded_line[1]}"
+        return decoded_line
+
+    @DynamicSpecifierArgument.value.setter
+    def value(self, value: Union[str, np.datetime64, datetime]) -> str:
+        if isinstance(value, str):
+            self._value = value
+        elif isinstance(value, np.datetime64):
+            value = pd.to_datetime(value)
+            value = value.strftime("%Y%m%d %H%M%S")
+            self._value = value
+        elif isinstance(value, datetime):
+            value = value.strftime("%Y%m%d %H%M%S")
+            self._value = value
+
+
 class SpeciesArgument(DynamicSpecifierArgument):
     def __init__(
         self,
@@ -177,6 +203,41 @@ class SpeciesArgument(DynamicSpecifierArgument):
             strings.append(string)
         return strings
 
+
+class DynamicTableArgument(DynamicSpecifierArgument):
+    def __init__(
+        self,
+        specifier: StaticSpecifierArgument,
+        length: int,
+        start_position: int,
+        end_position: int,
+        formatter: str,
+        type=float,
+    ):
+        super().__init__(specifier, type)
+        self.length = length
+        self.start_position = start_position
+        self.end_position = end_position
+        self.formatter = formatter
+        self._value: List[List[self._type]] = []
+
+    def readcolumn(self, f):
+        new_values = []
+        for i in range(self.length):
+            start_line_index = f.tell()
+            line = f.readline()
+            line_snippet = line[self.start_position : self.end_position]
+            new_values.append(self._type(line_snippet))
+        self._value.append(new_values)
+        f.seek(start_line_index)
+
+    def as_strings(self):
+        strings = []
+        for values in self._value:
+            new_strings = [self.formatter.format(value) for value in values]
+            strings.append(new_strings)
+        return strings
+
     def line(self):
         raise NotImplementedError
 
@@ -187,11 +248,56 @@ class SpeciesArgument(DynamicSpecifierArgument):
         raise NotImplementedError
 
 
-# class NestedArgument:
-#     def __init__(self.)
-#####################################
-####### Actual Option Classes #######
-#####################################
+class NestedSpecifierArgument:
+    def __init__(
+        self,
+        specifier1: StaticSpecifierArgument,
+        specifier2: StaticSpecifierArgument,
+        type,
+        dummyline: str,
+        formatter: str = None,
+    ):
+        self.specifier1 = specifier1
+        self.specifier2 = specifier2
+        self.formatter = formatter
+        self._type = type
+        self._dummyline = dummyline
+        self._value: List[List[self._type]] = []
+
+    def readblock(self, f: TextIO):
+        new_values = []
+        for i in range(self.specifier2.value):
+            line = f.readline()
+            new_values.append(self.linecaster(line))
+        self.value.append(new_values)
+
+    def as_string(self):
+        strings = []
+        for values in self._value:
+            new_strings = [self.formatter.format(value) for value in values]
+            strings.append(new_strings)
+        return strings
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = self._type(value)
+
+    def read(self, file: TextIO):
+        line = file.readline()
+        self.value = self.linecaster(line)
+
+    def linecaster(self, line: str) -> Any:
+        decoded_line = self._type(line.strip().split(" ")[0])
+        return decoded_line
+
+
+####################################
+###### Actual Option Classes #######
+####################################
 
 
 class Pathnames:
@@ -1211,18 +1317,348 @@ class Species:
         self._weight.value = value
 
 
-# class Releases:
-#     def __init__(self):
-#         pass
+class Releases:
+    def __init__(self):
+        self._nspec = StaticSpecifierArgument(
+            dummyline="   #                NSPEC           total number of species emitted\n"
+        )
+        self._emitvar = StaticArgument(
+            type=int,
+            dummyline="   #                EMITVAR         1 for emission variation\n",
+        )
+        self._link = DynamicSpecifierArgument(
+            self._nspec,
+            type=int,
+            dummyline="   #                LINK            index of species in file SPECIES\n",
+        )
+        self._ihour = DynamicTableArgument(
+            specifier=self._nspec,
+            length=24,
+            start_position=3,
+            end_position=5,
+            formatter="{:2}",
+            type=int,
+        )
 
-#     def read(self, f: TextIO):
-#         f.readline()
-#         self.nspec.read(f)
-#         self.emitvar.read(f)
-#         for i in range(self.nspec.value):
-#             self.link.readline(f)
-#             if self.emitvar.value == 1:
-#                 self.tvar.readblock(f)
+        self._area_hour = DynamicTableArgument(
+            specifier=self._nspec,
+            length=24,
+            start_position=5,
+            end_position=12,
+            formatter="{:7.3f}",
+            type=float,
+        )
+
+        self._point_hour = DynamicTableArgument(
+            specifier=self._nspec,
+            length=24,
+            start_position=12,
+            end_position=19,
+            formatter="{:7.3f}",
+            type=float,
+        )
+        self._idow = DynamicTableArgument(
+            specifier=self._nspec,
+            length=7,
+            start_position=3,
+            end_position=4,
+            formatter="{:1}",
+            type=int,
+        )
+
+        self._area_hour = DynamicTableArgument(
+            specifier=self._nspec,
+            length=7,
+            start_position=5,
+            end_position=17,
+            formatter="{:12.3f}",
+            type=float,
+        )
+
+        self._point_hour = DynamicTableArgument(
+            specifier=self._nspec,
+            length=7,
+            start_position=17,
+            end_position=29,
+            formatter="{:12.3f}",
+            type=float,
+        )
+
+        self._numpoint = StaticSpecifierArgument(
+            dummyline="#                 NUMPOINT        number of releases\n"
+        )
+
+        self._start = DynamicDatetimeArgument(
+            specifier=self._numpoint,
+            type=str,
+            dummyline="#   ID1, IT1        beginning date and time of release\n",
+        )
+
+        self._stop = DynamicDatetimeArgument(
+            specifier=self._numpoint,
+            type=str,
+            dummyline="#   ID1, IT1        ending date and time of release\n",
+        )
+
+        self._xpoint1 = DynamicSpecifierArgument(
+            specifier=self._numpoint,
+            type=float,
+            dummyline="#         XPOINT1 (real)  longitude [deg] of lower left corner\n",
+        )
+        self._ypoint1 = DynamicSpecifierArgument(
+            specifier=self._numpoint,
+            type=float,
+            dummyline="#         YPOINT1 (real)  latitude [deg] of lower left corner\n",
+        )
+        self._xpoint2 = DynamicSpecifierArgument(
+            specifier=self._numpoint,
+            type=float,
+            dummyline="#         XPOINT2 (real)  longitude [deg] of upper right corner\n",
+        )
+        self._ypoint2 = DynamicSpecifierArgument(
+            specifier=self._numpoint,
+            type=float,
+            dummyline="#         YPOINT2 (real)  latitude [DEG] of upper right corner\n",
+        )
+        self._kindz = DynamicSpecifierArgument(
+            specifier=self._numpoint,
+            type=float,
+            dummyline="#         KINDZ  (int)  1 for m above ground, 2 for m above sea level, 3 pressure\n",
+        )
+        self._zpoint1 = DynamicSpecifierArgument(
+            specifier=self._numpoint,
+            type=float,
+            dummyline="#        ZPOINT1 (real)  lower z-level\n",
+        )
+        self._zpoint2 = DynamicSpecifierArgument(
+            specifier=self._numpoint,
+            type=float,
+            dummyline="#        ZPOINT2 (real)  upper z-level \n",
+        )
+        self._npart = DynamicSpecifierArgument(
+            specifier=self._numpoint,
+            type=float,
+            dummyline="#          NPART (int)     total number of particles to be released",
+        )
+        self._xmass = NestedSpecifierArgument(
+            specifier1=self._numpoint,
+            specifier2=self._nspec,
+            type=float,
+            dummyline="#         XMASS (real)    total mass emitted",
+            formatter="{.4E}",
+        )
+        self._name = DynamicSpecifierArgument(
+            specifier=self._numpoint,
+            type=str,
+            dummyline="#  NAME OF RELEASE LOCATION\n",
+        )
+
+    def read(self, f: TextIO):
+        f.readline()
+        self.nspec.read(f)
+        self.emitvar.read(f)
+        for i in range(self.nspec.value):
+            self.link.readline(f)
+            if self.emitvar.value == 1:
+                self.ihour.readblock(f)
+                self.area_hour.readblock(f)
+                self.point_hour.readblock(f)
+                [f.readline() for j in range(24)]
+                self.idow.readblock(f)
+                self.area_dow.readblock(f)
+                self.point_dow.readblock(f)
+                [f.readline() for j in range(7)]
+        self.numpoint.read(f)
+        for i in range(self.numpoint.value):
+            self.start.readline(f)
+            self.stop.readline(f)
+            self.xpoint1.readline(f)
+            self.ypoint1.readline(f)
+            self.xpoint2.readline(f)
+            self.ypoint2.readline(f)
+            self.kindz.readline(f)
+            self.zpoint1.readline(f)
+            self.zpoint2.readline(f)
+            self.npart.readline(f)
+            self.xmass.readblock(f)
+            self.name.readline(f)
+
+    @property
+    def nspec(self):
+        return self._nspec
+
+    @nspec.setter
+    def nspec(self, value):
+        self.nspec.value = value
+
+    @property
+    def emitvar(self):
+        return self._emitvar
+
+    @emitvar.setter
+    def emitvar(self, value):
+        self.emitvar.value = value
+
+    @property
+    def link(self):
+        return self._link
+
+    @link.setter
+    def link(self, value):
+        self.link.value = value
+
+    @property
+    def ihour(self):
+        return self._ihour
+
+    @ihour.setter
+    def ihour(self, value):
+        self.ihour.value = value
+
+    @property
+    def area_hour(self):
+        return self._area_hour
+
+    @area_hour.setter
+    def area_hour(self, value):
+        self.area_hour.value = value
+
+    @property
+    def point_hour(self):
+        return self._point_hour
+
+    @point_hour.setter
+    def point_hour(self, value):
+        self.point_hour.value = value
+
+    @property
+    def idow(self):
+        return self._idow
+
+    @idow.setter
+    def idow(self, value):
+        self.idow.value = value
+
+    @property
+    def area_hour(self):
+        return self._area_hour
+
+    @area_hour.setter
+    def area_hour(self, value):
+        self.area_hour.value = value
+
+    @property
+    def point_hour(self):
+        return self._point_hour
+
+    @point_hour.setter
+    def point_hour(self, value):
+        self.point_hour.value = value
+
+    @property
+    def numpoint(self):
+        return self._numpoint
+
+    @numpoint.setter
+    def numpoint(self, value):
+        self.numpoint.value = value
+
+    @property
+    def start(self):
+        return self._start
+
+    @start.setter
+    def start(self, value):
+        self.start.value = value
+
+    @property
+    def stop(self):
+        return self._stop
+
+    @stop.setter
+    def stop(self, value):
+        self.stop.value = value
+
+    @property
+    def xpoint1(self):
+        return self._xpoint1
+
+    @xpoint1.setter
+    def xpoint1(self, value):
+        self.xpoint1.value = value
+
+    @property
+    def ypoint1(self):
+        return self._ypoint1
+
+    @ypoint1.setter
+    def ypoint1(self, value):
+        self.ypoint1.value = value
+
+    @property
+    def xpoint2(self):
+        return self._xpoint2
+
+    @xpoint2.setter
+    def xpoint2(self, value):
+        self.xpoint2.value = value
+
+    @property
+    def ypoint2(self):
+        return self._ypoint2
+
+    @ypoint2.setter
+    def ypoint2(self, value):
+        self.ypoint2.value = value
+
+    @property
+    def kindz(self):
+        return self._kindz
+
+    @kindz.setter
+    def kindz(self, value):
+        self.kindz.value = value
+
+    @property
+    def zpoint1(self):
+        return self._zpoint1
+
+    @zpoint1.setter
+    def zpoint1(self, value):
+        self.zpoint1.value = value
+
+    @property
+    def zpoint2(self):
+        return self._zpoint2
+
+    @zpoint2.setter
+    def zpoint2(self, value):
+        self.zpoint2.value = value
+
+    @property
+    def npart(self):
+        return self._npart
+
+    @npart.setter
+    def npart(self, value):
+        self.npart.value = value
+
+    @property
+    def xmass(self):
+        return self._xmass
+
+    @xmass.setter
+    def xmass(self, value):
+        self.xmass.value = value
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self.name.value = value
+
 
 #####################################
 ##### Final FlexwrfInput Class ######
@@ -1238,6 +1674,7 @@ class FlexwrfInput:
         self._outgrid_nest = OutgridNest()
         self._receptor = Receptor()
         self._species = Species()
+        self._releases = Releases()
 
     def read(self, file_path: Union[str, Path]):
         file_path = Path(file_path)
@@ -1249,6 +1686,7 @@ class FlexwrfInput:
             self.outgrid_nest.read(f)
             self.receptor.read(f)
             self.species.read(f)
+            self.releases.read(f)
 
     @property
     def pathnames(self):
@@ -1277,3 +1715,7 @@ class FlexwrfInput:
     @property
     def species(self):
         return self._species
+
+    @property
+    def releases(self):
+        return self._releases
