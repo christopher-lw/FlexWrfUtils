@@ -5,6 +5,13 @@ from datetime import datetime
 import pandas as pd
 
 
+def peek_line(f: TextIO):
+    pos = f.tell()
+    line = f.readline()
+    f.seek(pos)
+    return line
+
+
 class BaseArgument:
     def __init__(self, type=None, dummyline=None):
         self._type = type
@@ -118,7 +125,7 @@ class DynamicSpecifierArgument(BaseArgument):
         n_values = self.specifier.value
         for i in range(n_values):
             line = file.readline()
-            self._value.append(self.linecaster(line))
+            self.append(self.linecaster(line))
 
     @property
     def lines(self):
@@ -134,6 +141,54 @@ class DynamicSpecifierArgument(BaseArgument):
         self.specifier.value = len(self._value)
 
 
+class SpeciesArgument(DynamicSpecifierArgument):
+    def __init__(
+        self,
+        specifier: StaticSpecifierArgument,
+        formatter: str,
+        start_position: int,
+        end_position: int,
+        type=float,
+    ):
+        super().__init__(specifier, type)
+        self.formatter = formatter
+        self.start_position = start_position
+        self.end_position = end_position
+
+    def read(self, file: TextIO):
+        start_line_index = file.tell()
+        for i in range(self.specifier.value):
+            line = file.readline()
+            line_snippet = line[self.start_position : self.end_position]
+            if line_snippet.strip() == "":
+                new_value = None
+            else:
+                new_value = self._type(line_snippet)
+            self.append(new_value)
+        file.seek(start_line_index)
+
+    def as_strings(self):
+        strings = []
+        for value in self.value:
+            if value is None:
+                string = " " * (self.end_position - self.start_position)
+            else:
+                string = self.formatter.format(value)
+            strings.append(string)
+        return strings
+
+    def line(self):
+        raise NotImplementedError
+
+    def lines(self):
+        raise NotImplementedError
+
+    def linecaster(self, line: str) -> Any:
+        raise NotImplementedError
+
+
+# class NestedArgument:
+#     def __init__(self.)
 #####################################
 ####### Actual Option Classes #######
 #####################################
@@ -148,17 +203,10 @@ class Pathnames:
     def read(self, f: TextIO):
         f.readline()
         self.outputpath.read(f)
-        while "====" not in self.peek_line(f):
+        while "====" not in peek_line(f):
             self.inputpath.readline(f)
             self.availablepath.readline(f)
         f.readline()
-
-    @staticmethod
-    def peek_line(f: TextIO):
-        pos = f.tell()
-        line = f.readline()
-        f.seek(pos)
-        return line
 
     @property
     def outputpath(self):
@@ -954,6 +1002,228 @@ class Receptor:
         self.y.value = value
 
 
+class Species:
+    def __init__(self):
+        self._numtable = StaticSpecifierArgument(
+            dummyline="    #               NUMTABLE        number of variable properties. The following lines are fixed format\n"
+        )
+
+        self._name = SpeciesArgument(
+            specifier=self._numtable,
+            formatter="{:10}",
+            start_position=4,
+            end_position=14,
+            type=str,
+        )
+
+        self._decaytime = SpeciesArgument(
+            specifier=self._numtable,
+            formatter="{:10.1f}",
+            start_position=14,
+            end_position=24,
+        )
+
+        self._wetscava = SpeciesArgument(
+            specifier=self._numtable,
+            formatter="{:11.1E}",
+            start_position=24,
+            end_position=35,
+        )
+
+        self._wetsb = SpeciesArgument(
+            specifier=self._numtable,
+            formatter="{:6.2f}",
+            start_position=35,
+            end_position=41,
+        )
+
+        self._drydif = SpeciesArgument(
+            specifier=self._numtable,
+            formatter="{:7.1f}",
+            start_position=41,
+            end_position=48,
+        )
+
+        self._dryhenry = SpeciesArgument(
+            specifier=self._numtable,
+            formatter="{:9.1E}",
+            start_position=48,
+            end_position=57,
+        )
+        self._drya = SpeciesArgument(
+            specifier=self._numtable,
+            formatter="{:5.1f}",
+            start_position=57,
+            end_position=62,
+        )
+        self._partrho = SpeciesArgument(
+            specifier=self._numtable,
+            formatter="{:10.1E}",
+            start_position=62,
+            end_position=72,
+        )
+        self._parmean = SpeciesArgument(
+            specifier=self._numtable,
+            formatter="{:8.1E}",
+            start_position=72,
+            end_position=80,
+        )
+        self._partsig = SpeciesArgument(
+            specifier=self._numtable,
+            formatter="{:8.1E}",
+            start_position=80,
+            end_position=88,
+        )
+        self._dryvelo = SpeciesArgument(
+            specifier=self._numtable,
+            formatter="{:8.2f}",
+            start_position=88,
+            end_position=96,
+        )
+        self._weight = SpeciesArgument(
+            specifier=self._numtable,
+            formatter="{:8.2f}",
+            start_position=96,
+            end_position=104,
+        )
+
+    def read(self, f: TextIO):
+        f.readline()
+        self.numtable.read(f)
+        f.readline()
+        self.name.read(f)
+        self.decaytime.read(f)
+        self.wetscava.read(f)
+        self.wetsb.read(f)
+        self.drydif.read(f)
+        self.dryhenry.read(f)
+        self.drya.read(f)
+        self.partrho.read(f)
+        self.parmean.read(f)
+        self.partsig.read(f)
+        self.dryvelo.read(f)
+        self.weight.read(f)
+        f.readline()
+        f.readline()
+
+    @property
+    def numtable(self):
+        return self._numtable
+
+    @numtable.setter
+    def numtable(self, value):
+        self._numtable.value = value
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name.value = value
+
+    @property
+    def decaytime(self):
+        return self._decaytime
+
+    @decaytime.setter
+    def decaytime(self, value):
+        self._decaytime.value = value
+
+    @property
+    def wetscava(self):
+        return self._wetscava
+
+    @wetscava.setter
+    def wetscava(self, value):
+        self._wetscava.value = value
+
+    @property
+    def wetsb(self):
+        return self._wetsb
+
+    @wetsb.setter
+    def wetsb(self, value):
+        self._wetsb.value = value
+
+    @property
+    def drydif(self):
+        return self._drydif
+
+    @drydif.setter
+    def drydif(self, value):
+        self._drydif.value = value
+
+    @property
+    def dryhenry(self):
+        return self._dryhenry
+
+    @dryhenry.setter
+    def dryhenry(self, value):
+        self._dryhenry.value = value
+
+    @property
+    def drya(self):
+        return self._drya
+
+    @drya.setter
+    def drya(self, value):
+        self._drya.value = value
+
+    @property
+    def partrho(self):
+        return self._partrho
+
+    @partrho.setter
+    def partrho(self, value):
+        self._partrho.value = value
+
+    @property
+    def parmean(self):
+        return self._parmean
+
+    @parmean.setter
+    def parmean(self, value):
+        self._parmean.value = value
+
+    @property
+    def partsig(self):
+        return self._partsig
+
+    @partsig.setter
+    def partsig(self, value):
+        self._partsig.value = value
+
+    @property
+    def dryvelo(self):
+        return self._dryvelo
+
+    @dryvelo.setter
+    def dryvelo(self, value):
+        self._dryvelo.value = value
+
+    @property
+    def weight(self):
+        return self._weight
+
+    @weight.setter
+    def weight(self, value):
+        self._weight.value = value
+
+
+# class Releases:
+#     def __init__(self):
+#         pass
+
+#     def read(self, f: TextIO):
+#         f.readline()
+#         self.nspec.read(f)
+#         self.emitvar.read(f)
+#         for i in range(self.nspec.value):
+#             self.link.readline(f)
+#             if self.emitvar.value == 1:
+#                 self.tvar.readblock(f)
+
 #####################################
 ##### Final FlexwrfInput Class ######
 #####################################
@@ -967,6 +1237,7 @@ class FlexwrfInput:
         self._outgrid = Outgrid()
         self._outgrid_nest = OutgridNest()
         self._receptor = Receptor()
+        self._species = Species()
 
     def read(self, file_path: Union[str, Path]):
         file_path = Path(file_path)
@@ -977,6 +1248,7 @@ class FlexwrfInput:
             self.outgrid.read(f)
             self.outgrid_nest.read(f)
             self.receptor.read(f)
+            self.species.read(f)
 
     @property
     def pathnames(self):
@@ -1001,3 +1273,7 @@ class FlexwrfInput:
     @property
     def receptor(self):
         return self._receptor
+
+    @property
+    def species(self):
+        return self._species

@@ -5,6 +5,7 @@ from flexwrfutils.classes.flexwrfinput2 import (
     DynamicSpecifierArgument,
     DatetimeArgument,
     FlexwrfInput,
+    SpeciesArgument,
 )
 import numpy as np
 from datetime import datetime
@@ -56,6 +57,41 @@ def datetimeinstance(example_path):
             f.readline()
         datetimeinstance.read(f)
     return datetimeinstance
+
+
+@pytest.fixture
+def decaytime(example_path):
+    numtable = StaticSpecifierArgument(
+        dummyline="     #               NUMTABLE        number of variable properties. The following lines are fixed format"
+    )
+    species = SpeciesArgument(numtable, "{:10.1f}", 14, 24)
+    with example_path.open() as f:
+        for i in range(68):
+            f.readline()
+        numtable.read(f)
+        f.readline()
+        species.read(f)
+    return numtable, species
+
+
+@pytest.fixture
+def wetsb(example_path):
+    numtable = StaticSpecifierArgument(
+        dummyline="     #               NUMTABLE        number of variable properties. The following lines are fixed format"
+    )
+    species = SpeciesArgument(
+        specifier=numtable,
+        formatter="{:6.2f}",
+        start_position=35,
+        end_position=41,
+    )
+    with example_path.open() as f:
+        for i in range(68):
+            f.readline()
+        numtable.read(f)
+        f.readline()
+        species.read(f)
+    return numtable, species
 
 
 @pytest.fixture
@@ -150,8 +186,22 @@ class Test_Datetime:
         assert timestring == valuestr == valuenp == valuedt
 
 
+class Test_Species:
+    def test_read_decaytime(self, decaytime):
+        numtable, species = decaytime
+        assert len(species) == numtable.value
+        assert species.value[0] == -999.9
+
+    def test_wetsb(self, wetsb):
+        numtable, species = wetsb
+        assert species.value == [None, 0.8]
+
+    def test_as_string_wetsb(self, wetsb):
+        numtable, species = wetsb
+        assert species.as_strings() == ["      ", "  0.80"]
+
+
 class Test_FlexwrfInput:
-    # @pytest.mark.xfail
     def test_read(self, example_path, flexwrfinput):
         flexwrfinput.read(example_path)
         assert flexwrfinput.pathnames.outputpath.value == Path(
@@ -162,6 +212,9 @@ class Test_FlexwrfInput:
         assert len(flexwrfinput.outgrid.levels) == 3
         assert flexwrfinput.outgrid_nest.numxgrid.value == 24
         assert len(flexwrfinput.receptor.receptor) == 0
+        assert (
+            len(flexwrfinput.species.weight) == flexwrfinput.species.numtable.value == 2
+        )
 
     def test_set(self, example_path, flexwrfinput):
         flexwrfinput.read(example_path)
