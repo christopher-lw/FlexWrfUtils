@@ -36,6 +36,9 @@ class BaseArgument:
 
 
 class StaticArgument(BaseArgument):
+    def __init__(self, type=None, dummyline=None):
+        super().__init__(type, dummyline)
+
     @property
     def line(self):
         return self._dummyline.replace("#", str(self._value))
@@ -75,7 +78,7 @@ class DynamicArgument(BaseArgument):
 
 class DatetimeArgument(StaticArgument):
     def __init__(self, dummyline=None):
-        super().__init__(dummyline)
+        super().__init__(dummyline=dummyline)
 
     def linecaster(self, line: str) -> str:
         decoded_line = line.strip().split(" ")[:2]
@@ -279,6 +282,14 @@ class NestedSpecifierArgument:
         return strings
 
     @property
+    def lines(self):
+        lines = []
+        for strings in self.as_string():
+            new_lines = [self._dummyline.replace("#", string) for string in strings]
+            lines.append(new_lines)
+        return lines
+
+    @property
     def value(self):
         return self._value
 
@@ -302,6 +313,8 @@ class NestedSpecifierArgument:
 
 class Pathnames:
     def __init__(self):
+        self._header = "=====================FORMER PATHNAMES FILE===================\n"
+        self._footer = "=============================================================\n"
         self._outputpath = StaticArgument(type=Path, dummyline="#/\n")
         self._inputpath = DynamicArgument(type=Path, dummyline="#/\n")
         self._availablepath = DynamicArgument(type=Path, dummyline="#/\n")
@@ -313,6 +326,19 @@ class Pathnames:
             self.inputpath.readline(f)
             self.availablepath.readline(f)
         f.readline()
+
+    @property
+    def lines(self):
+        lines = []
+        lines.append(self._header)
+        lines.append(self.outputpath.line)
+        for input_line, available_line in zip(
+            self.inputpath.lines, self.availablepath.lines
+        ):
+            lines.append(input_line)
+            lines.append(available_line)
+        lines.append(self._footer)
+        return lines
 
     @property
     def outputpath(self):
@@ -341,6 +367,7 @@ class Pathnames:
 
 class Command:
     def __init__(self):
+        self._header = "=====================FORMER COMMAND FILE=====================\n"
         self._ldirect = StaticArgument(
             type=int,
             dummyline="    #                LDIRECT:          1 for forward simulation, -1 for backward simulation\n",
@@ -517,6 +544,48 @@ class Command:
         self.iouttype.read(f)
         self.nctimerec.read(f)
         self.verbose.read(f)
+
+    @property
+    def lines(self):
+        lines = [
+            self._header,
+            self.ldirect.line,
+            self.start.line,
+            self.stop.line,
+            self.outputrate.line,
+            self.averagerate.line,
+            self.samplingrate.line,
+            self.splittingtime.line,
+            self.syncronizationinterval.line,
+            self.ctl.line,
+            self.ifine.line,
+            self.iout.line,
+            self.ipout.line,
+            self.lsubgrid.line,
+            self.lconvection.line,
+            self.dtconv.line,
+            self.lagespectra.line,
+            self.ipin.line,
+            self.iflux.line,
+            self.ioutputforeachrel.line,
+            self.mdomainfill.line,
+            self.indsource.line,
+            self.indreceptor.line,
+            self.nestedoutput.line,
+            self.linitcond.line,
+            self.turboption.line,
+            self.luoption.line,
+            self.cblscheme.line,
+            self.sfcoption.line,
+            self.windoption.line,
+            self.timeoption.line,
+            self.outgridcoord.line,
+            self.releasecoord.line,
+            self.iouttype.line,
+            self.nctimerec.line,
+            self.verbose.line,
+        ]
+        return lines
 
     @property
     def ldirect(self):
@@ -801,6 +870,7 @@ class Command:
 
 class Ageclasses:
     def __init__(self):
+        self._header = "=====================FORMER AGECLASESS FILE==================\n"
         self._nageclasses = StaticSpecifierArgument(
             dummyline="    #                NAGECLASS        number of age classes\n"
         )
@@ -814,6 +884,12 @@ class Ageclasses:
         f.readline()
         self.nageclasses.read(f)
         self.ageclasses.read(f)
+
+    @property
+    def lines(self):
+        lines = [self._header, self.nageclasses.line]
+        lines.extend(self.ageclasses.lines)
+        return lines
 
     @property
     def nageclasses(self):
@@ -834,6 +910,7 @@ class Ageclasses:
 
 class Outgrid:
     def __init__(self):
+        self._header = "=====================FORMER OUTGRID FILE=====================\n"
         self._outlonleft = StaticArgument(
             type=float,
             dummyline="   #            OUTLONLEFT      geograhical longitude of lower left corner of output grid\n",
@@ -880,6 +957,22 @@ class Outgrid:
         self.dyoutlon.read(f)
         self.numzgrid.read(f)
         self.levels.read(f)
+
+    @property
+    def lines(self):
+        lines = [
+            self._header,
+            self.outlonleft.line,
+            self.outlatlower.line,
+            self.numxgrid.line,
+            self.numygrid.line,
+            self.outgriddef.line,
+            self.dxoutlon.line,
+            self.dyoutlon.line,
+            self.numzgrid.line,
+        ]
+        lines.extend(self.levels.lines)
+        return lines
 
     @property
     def outlonleft(self):
@@ -956,6 +1049,7 @@ class Outgrid:
 
 class OutgridNest:
     def __init__(self):
+        self._header = "================OUTGRID_NEST==========================\n"
         self._outlonleft = StaticArgument(
             type=float,
             dummyline="   #            OUTLONLEFT      geograhical longitude of lower left corner of output grid\n",
@@ -994,6 +1088,20 @@ class OutgridNest:
         self.outgriddef.read(f)
         self.dxoutlon.read(f)
         self.dyoutlon.read(f)
+
+    @property
+    def lines(self):
+        lines = [
+            self._header,
+            self.outlonleft.line,
+            self.outlatlower.line,
+            self.numxgrid.line,
+            self.numygrid.line,
+            self.outgriddef.line,
+            self.dxoutlon.line,
+            self.dyoutlon.line,
+        ]
+        return lines
 
     @property
     def outlonleft(self):
@@ -1054,6 +1162,7 @@ class OutgridNest:
 
 class Receptor:
     def __init__(self):
+        self._header = "=====================FORMER RECEPTOR FILE====================\n"
         self._numreceptor = StaticSpecifierArgument(
             dummyline="    #                NUMRECEPTOR     number of receptors\n"
         )
@@ -1074,6 +1183,17 @@ class Receptor:
             self.receptor.readline(f)
             self.x.readline(f)
             self.y.readline(f)
+
+    @property
+    def lines(self):
+        lines = [self._header, self.numreceptor.line]
+        for receptor_line, x_line, y_line in zip(
+            self.receptor.lines, self.x.lines, self.y.lines
+        ):
+            lines.append(receptor_line)
+            lines.append(x_line)
+            lines.append(y_line)
+        return lines
 
     @property
     def numreceptor(self):
@@ -1110,6 +1230,8 @@ class Receptor:
 
 class Species:
     def __init__(self):
+        self._header = "=====================FORMER SPECIES FILE=====================\n"
+        self._legend = "XXXX|NAME    |decaytime |wetscava  |wetsb|drydif|dryhenry|drya|partrho  |parmean|partsig|dryvelo|weight |\n"
         self._numtable = StaticSpecifierArgument(
             dummyline="    #               NUMTABLE        number of variable properties. The following lines are fixed format\n"
         )
@@ -1209,8 +1331,30 @@ class Species:
         self.partsig.read(f)
         self.dryvelo.read(f)
         self.weight.read(f)
-        f.readline()
-        f.readline()
+        [f.readline() for i in range(self.numtable.value)]
+
+    @property
+    def lines(self):
+        lines = [self._header, self.numtable.line, self._legend]
+        for argument_strings in zip(
+            self.name.as_strings(),
+            self.decaytime.as_strings(),
+            self.wetscava.as_strings(),
+            self.wetsb.as_strings(),
+            self.drydif.as_strings(),
+            self.dryhenry.as_strings(),
+            self.drya.as_strings(),
+            self.partrho.as_strings(),
+            self.parmean.as_strings(),
+            self.partsig.as_strings(),
+            self.dryvelo.as_strings(),
+            self.weight.as_strings(),
+        ):
+            line = "    "
+            for string in argument_strings:
+                line += string
+            lines.append(line + "\n")
+        return lines
 
     @property
     def numtable(self):
@@ -1319,6 +1463,7 @@ class Species:
 
 class Releases:
     def __init__(self):
+        self._header = "=====================FORMER RELEEASES FILE===================\n"
         self._nspec = StaticSpecifierArgument(
             dummyline="   #                NSPEC           total number of species emitted\n"
         )
@@ -1366,7 +1511,7 @@ class Releases:
             type=int,
         )
 
-        self._area_hour = DynamicTableArgument(
+        self._area_dow = DynamicTableArgument(
             specifier=self._nspec,
             length=7,
             start_position=5,
@@ -1375,7 +1520,7 @@ class Releases:
             type=float,
         )
 
-        self._point_hour = DynamicTableArgument(
+        self._point_dow = DynamicTableArgument(
             specifier=self._nspec,
             length=7,
             start_position=17,
@@ -1438,14 +1583,14 @@ class Releases:
         self._npart = DynamicSpecifierArgument(
             specifier=self._numpoint,
             type=float,
-            dummyline="#          NPART (int)     total number of particles to be released",
+            dummyline="#          NPART (int)     total number of particles to be released\n",
         )
         self._xmass = NestedSpecifierArgument(
             specifier1=self._numpoint,
             specifier2=self._nspec,
             type=float,
-            dummyline="#         XMASS (real)    total mass emitted",
-            formatter="{.4E}",
+            dummyline="#         XMASS (real)    total mass emitted\n",
+            formatter="{:.4E}",
         )
         self._name = DynamicSpecifierArgument(
             specifier=self._numpoint,
@@ -1482,6 +1627,80 @@ class Releases:
             self.npart.readline(f)
             self.xmass.readblock(f)
             self.name.readline(f)
+
+    @property
+    def lines(self):
+        lines = [self._header, self.nspec.line, self.emitvar.line]
+
+        if self.emitvar.value == 0:
+            lines.extend(self.link.lines)
+
+        else:
+            for (
+                ihour,
+                area_hour,
+                point_hour,
+                idow,
+                area_dow,
+                point_dow,
+                link_line,
+            ) in zip(
+                self.link.lines,
+                self.ihour.as_strings(),
+                self.area_hour.as_strings(),
+                self.point_hour.as_strings(),
+                self.idow.as_strings(),
+                self.area_dow.as_strings(),
+                self.point_dow.as_strings(),
+            ):
+                lines.append(link_line)
+                line_start = "   "
+                line_end = "\n"
+                for i, a, p in zip(ihour, area_hour, point_hour):
+                    lines.append(line_start + i + a + p + line_end)
+                for i, a, p in zip(idow, area_dow, point_dow):
+                    lines.append(line_start + i + a + p + line_end)
+        lines.append(self.numpoint.line)
+        for (
+            start_line,
+            stop_line,
+            xpoint1_line,
+            ypoint1_line,
+            xpoint2_line,
+            ypoint2_line,
+            kindz_line,
+            zpoint1_line,
+            zpoint2_line,
+            npart_line,
+            xmass_lines,
+            name_line,
+        ) in zip(
+            self.start.lines,
+            self.stop.lines,
+            self.xpoint1.lines,
+            self.ypoint1.lines,
+            self.xpoint2.lines,
+            self.ypoint2.lines,
+            self.kindz.lines,
+            self.zpoint1.lines,
+            self.zpoint2.lines,
+            self.npart.lines,
+            self.xmass.lines,
+            self.name.lines,
+        ):
+            lines.append(start_line)
+            lines.append(stop_line)
+            lines.append(xpoint1_line)
+            lines.append(ypoint1_line)
+            lines.append(xpoint2_line)
+            lines.append(ypoint2_line)
+            lines.append(kindz_line)
+            lines.append(zpoint1_line)
+            lines.append(zpoint2_line)
+            lines.append(npart_line)
+            lines.extend(xmass_lines)
+            lines.append(name_line)
+        return lines
 
     @property
     def nspec(self):
@@ -1540,20 +1759,20 @@ class Releases:
         self.idow.value = value
 
     @property
-    def area_hour(self):
-        return self._area_hour
+    def area_dow(self):
+        return self._area_dow
 
-    @area_hour.setter
-    def area_hour(self, value):
-        self.area_hour.value = value
+    @area_dow.setter
+    def area_dow(self, value):
+        self.area_dow.value = value
 
     @property
-    def point_hour(self):
-        return self._point_hour
+    def point_dow(self):
+        return self._point_dow
 
-    @point_hour.setter
-    def point_hour(self, value):
-        self.point_hour.value = value
+    @point_dow.setter
+    def point_dow(self, value):
+        self.point_dow.value = value
 
     @property
     def numpoint(self):
@@ -1675,18 +1894,35 @@ class FlexwrfInput:
         self._receptor = Receptor()
         self._species = Species()
         self._releases = Releases()
+        self.options = [
+            self._pathnames,
+            self._command,
+            self._ageclasses,
+            self._outgrid,
+            self._outgrid_nest,
+            self._receptor,
+            self._species,
+            self._releases,
+        ]
 
     def read(self, file_path: Union[str, Path]):
         file_path = Path(file_path)
         with file_path.open("r") as f:
-            self.pathnames.read(f)
-            self.command.read(f)
-            self.ageclasses.read(f)
-            self.outgrid.read(f)
-            self.outgrid_nest.read(f)
-            self.receptor.read(f)
-            self.species.read(f)
-            self.releases.read(f)
+            for option in self.options:
+                option.read(f)
+
+    def write(self, file_path: Union[str, Path]):
+        file_path = Path(file_path)
+        with file_path.open("w") as f:
+            for line in self.lines:
+                f.write(line)
+
+    @property
+    def lines(self) -> str:
+        lines = []
+        for option in self.options:
+            lines.extend(option.lines)
+        return lines
 
     @property
     def pathnames(self):

@@ -221,3 +221,16 @@ class Test_FlexwrfInput:
         flexwrfinput.read(example_path)
         flexwrfinput.pathnames.outputpath = "test/path"
         assert flexwrfinput.pathnames.outputpath.value == Path("test/path")
+
+    def test_lines(self, example_path, flexwrfinput):
+        flexwrfinput.read(example_path)
+        with example_path.open() as f:
+            lines = f.readlines()
+        assert len(lines) == len(flexwrfinput.lines)
+        wrong_endings = []
+        for line in flexwrfinput.lines:
+            if not "\n" == line[-1:]:
+                wrong_endings.append(line)
+        assert (
+            len(wrong_endings) == 0
+        ), f"No proper end of line cahacter in lines:\n{wrong_endings}"
