@@ -53,6 +53,11 @@ class DynamicArgument(BaseArgument):
     def __len__(self):
         return len(self._value)
 
+    @BaseArgument.value.setter
+    def value(self, value):
+        new_values = [self._type(new_value) for new_value in value]
+        self._value = new_values
+
     def readline(self, file: TextIO):
         line = file.readline()
         self.append(self.linecaster(line))
@@ -74,6 +79,12 @@ class DynamicArgument(BaseArgument):
     def remove(self, index):
         self._value.remove(self.value[-1])
         self._n_values -= 1
+
+    def __getitem__(self, index):
+        return self.value[index]
+
+    def __setitem__(self, index, value):
+        self.value[index] = self._type(value)
 
 
 class DatetimeArgument(StaticArgument):
@@ -116,8 +127,19 @@ class DynamicSpecifierArgument(BaseArgument):
         self.specifier = specifier
         self._value: List[self._type] = []
 
+    @BaseArgument.value.setter
+    def value(self, value):
+        new_values = [self._type(new_value) for new_value in value]
+        self._value = new_values
+
     def __len__(self):
         return len(self._value)
+
+    def __getitem__(self, index):
+        return self.value[index]
+
+    def __setitem__(self, index, value):
+        self.value[index] = self._type(value)
 
     def readline(self, file: TextIO):
         line = file.readline()
@@ -152,22 +174,30 @@ class DynamicDatetimeArgument(DynamicSpecifierArgument):
     ):
         super().__init__(specifier, type, dummyline)
 
+    def __setitem__(self, index, value):
+        if isinstance(value, np.datetime64):
+            value = pd.to_datetime(value)
+            value = value.strftime("%Y%m%d %H%M%S")
+        elif isinstance(value, datetime):
+            value = value.strftime("%Y%m%d %H%M%S")
+        self.value[index] = self._type(value)
+
     def linecaster(self, line: str) -> str:
         decoded_line = line.strip().split(" ")[:2]
         decoded_line = f"{decoded_line[0]} {decoded_line[1]}"
         return decoded_line
 
     @DynamicSpecifierArgument.value.setter
-    def value(self, value: Union[str, np.datetime64, datetime]) -> str:
-        if isinstance(value, str):
-            self._value = value
-        elif isinstance(value, np.datetime64):
-            value = pd.to_datetime(value)
-            value = value.strftime("%Y%m%d %H%M%S")
-            self._value = value
-        elif isinstance(value, datetime):
-            value = value.strftime("%Y%m%d %H%M%S")
-            self._value = value
+    def value(self, value: List[Union[str, np.datetime64, datetime]]) -> str:
+        new_values = []
+        for new_value in value:
+            if isinstance(new_value, np.datetime64):
+                new_value = pd.to_datetime(new_value)
+                new_value = new_value.strftime("%Y%m%d %H%M%S")
+            elif isinstance(new_value, datetime):
+                new_value = new_value.strftime("%Y%m%d %H%M%S")
+            new_values.append(new_value)
+        self._value = new_values
 
 
 class SpeciesArgument(DynamicSpecifierArgument):
@@ -224,6 +254,16 @@ class DynamicTableArgument(DynamicSpecifierArgument):
         self.formatter = formatter
         self._value: List[List[self._type]] = []
 
+    @DynamicSpecifierArgument.value.setter
+    def value(self, value):
+        casted_new_values = []
+        for new_value_list in value:
+            casted_new_value_list = [
+                self._type(new_value) for new_value in new_value_list
+            ]
+            casted_new_values.append(casted_new_value_list)
+        self._value = casted_new_values
+
     def readcolumn(self, f):
         start_line_index = f.tell()
         new_values = []
@@ -267,6 +307,13 @@ class NestedSpecifierArgument:
         self._dummyline = dummyline
         self._value: List[List[self._type]] = []
 
+    def __getitem__(self, index):
+        return self.value[index]
+
+    def __setitem__(self, index, value):
+        value = [self._type(v) for v in value]
+        self.value[index] = value
+
     def readblock(self, f: TextIO):
         new_values = []
         for i in range(self.specifier2.value):
@@ -295,7 +342,13 @@ class NestedSpecifierArgument:
 
     @value.setter
     def value(self, value):
-        self._value = self._type(value)
+        casted_new_values = []
+        for new_value_list in value:
+            casted_new_value_list = [
+                self._type(new_value) for new_value in new_value_list
+            ]
+            casted_new_values.append(casted_new_value_list)
+        self._value = casted_new_values
 
     def read(self, file: TextIO):
         line = file.readline()

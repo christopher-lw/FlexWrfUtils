@@ -275,6 +275,42 @@ class Test_FlexwrfInput:
         flexwrfinput.pathnames.outputpath = "test/path"
         assert flexwrfinput.pathnames.outputpath.value == Path("test/path")
 
+        flexwrfinput.outgrid.levels = [1, 2, 3]
+        assert flexwrfinput.outgrid.levels.value == [1, 2, 3]
+
+        new_ihour = np.ones((2, 24))
+        flexwrfinput.releases.ihour = new_ihour
+        assert (flexwrfinput.releases.ihour.value == new_ihour).all()
+
+        new_start_dates = [np.datetime64("2009-01-01T01:01:01")] * 2
+        flexwrfinput.releases.start = new_start_dates
+        assert flexwrfinput.releases.start.value == ["20090101 010101"] * 2
+
+    def test_getter(self, example_path, flexwrfinput):
+        flexwrfinput.read(example_path)
+        assert flexwrfinput.releases.start[0] == flexwrfinput.releases.start.value[0]
+
+    def test_setter(self, example_path, flexwrfinput):
+        flexwrfinput.read(example_path)
+        flexwrfinput.releases.start[0] = np.datetime64("2009-01-01T01:01:01")
+        assert (
+            flexwrfinput.releases.start[0]
+            == flexwrfinput.releases.start.value[0]
+            == "20090101 010101"
+        )
+        flexwrfinput.releases.xpoint1[0] = 42
+        assert (
+            flexwrfinput.releases.xpoint1[0]
+            == flexwrfinput.releases.xpoint1.value[0]
+            == 42
+        )
+        flexwrfinput.releases.xmass[0] = [1, 2]
+        assert (
+            flexwrfinput.releases.xmass[0]
+            == flexwrfinput.releases.xmass.value[0]
+            == [1, 2]
+        )
+
     def test_lines(self, example_path, flexwrfinput):
         flexwrfinput.read(example_path)
         with example_path.open() as f:
