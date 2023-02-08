@@ -100,6 +100,12 @@ def flexwrfinput():
     return flexwrfinput
 
 
+@pytest.fixture
+def flexwrfinput2():
+    flexwrfinput = FlexwrfInput()
+    return flexwrfinput
+
+
 ####################################
 ##### Tests for FlexwrfArgument ####
 ####################################
@@ -202,7 +208,7 @@ class Test_Species:
 
 
 class Test_FlexwrfInput:
-    def test_read(self, example_path, flexwrfinput):
+    def test_read_forward1(self, example_path, flexwrfinput):
         flexwrfinput.read(example_path)
         assert flexwrfinput.pathnames.outputpath.value == Path(
             "/scratch2/portfolios/BMC/stela/jbrioude/test_depo1/"
@@ -216,6 +222,53 @@ class Test_FlexwrfInput:
             len(flexwrfinput.species.weight) == flexwrfinput.species.numtable.value == 2
         )
         assert flexwrfinput.releases.xmass.value[1][0] == 0.5e4
+
+    @pytest.mark.parametrize(
+        "test_file",
+        [
+            ("flexwrf.input.backward1"),
+            ("flexwrf.input.backward2"),
+            ("flexwrf.input.forward1"),
+            ("flexwrf.input.forward2"),
+        ],
+    )
+    def test_read_lines(self, test_file, flexwrfinput):
+        file_path = Path("tests") / "file_examples" / test_file
+        flexwrfinput.read(file_path)
+        with file_path.open() as f:
+            lines = f.readlines()
+        assert len(lines) == len(flexwrfinput.lines)
+
+    @pytest.mark.parametrize(
+        "test_file",
+        [
+            ("flexwrf.input.backward1"),
+            ("flexwrf.input.backward2"),
+            ("flexwrf.input.forward1"),
+            ("flexwrf.input.forward2"),
+        ],
+    )
+    def test_read_write(self, tmp_path, flexwrfinput, flexwrfinput2, test_file):
+        file_path = Path("tests") / "file_examples" / test_file
+        flexwrfinput.read(file_path)
+        flexwrfinput.write(tmp_path / "test_file")
+        flexwrfinput2.read(tmp_path / "test_file")
+        options = [
+            "pathnames",
+            "command",
+            "ageclasses",
+            "outgrid",
+            "outgrid_nest",
+            "receptor",
+            "species",
+            "releases",
+        ]
+        for option in options:
+            assert (
+                getattr(flexwrfinput, option).lines
+                == getattr(flexwrfinput2, option).lines
+            )
+        assert flexwrfinput.lines == flexwrfinput2.lines
 
     def test_set(self, example_path, flexwrfinput):
         flexwrfinput.read(example_path)
@@ -233,4 +286,4 @@ class Test_FlexwrfInput:
                 wrong_endings.append(line)
         assert (
             len(wrong_endings) == 0
-        ), f"No proper end of line cahacter in lines:\n{wrong_endings}"
+        ), f"No proper end of line character in lines:\n{wrong_endings}"

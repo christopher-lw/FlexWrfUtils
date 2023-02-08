@@ -225,9 +225,9 @@ class DynamicTableArgument(DynamicSpecifierArgument):
         self._value: List[List[self._type]] = []
 
     def readcolumn(self, f):
+        start_line_index = f.tell()
         new_values = []
         for i in range(self.length):
-            start_line_index = f.tell()
             line = f.readline()
             line_snippet = line[self.start_position : self.end_position]
             new_values.append(self._type(line_snippet))
@@ -304,6 +304,14 @@ class NestedSpecifierArgument:
     def linecaster(self, line: str) -> Any:
         decoded_line = self._type(line.strip().split(" ")[0])
         return decoded_line
+
+    def append(self, value):
+        self._value.append(value)
+        self.specifier1.value = len(self._value)
+
+    def remove(self, index):
+        self._value.remove(self.value[index])
+        self.specifier1.value = len(self._value)
 
 
 ####################################
@@ -400,7 +408,7 @@ class Command:
         )
         self._ctl = StaticArgument(
             type=float,
-            dummyline="    #.              CTL    (real)     factor by which time step must be smaller than tl\n",
+            dummyline="    #              CTL    (real)     factor by which time step must be smaller than tl\n",
         )
         self._ifine = StaticArgument(
             type=int,
@@ -424,7 +432,7 @@ class Command:
         )
         self._dtconv = StaticArgument(
             type=float,
-            dummyline="    #.            DT_CONV  (real)   time interval to call convection, seconds\n",
+            dummyline="    #            DT_CONV  (real)   time interval to call convection, seconds\n",
         )
         self._lagespectra = StaticArgument(
             type=int,
@@ -943,7 +951,9 @@ class Outgrid:
             dummyline="    #                NUMZGRID        number of vertical levels\n"
         )
         self._levels = DynamicSpecifierArgument(
-            self._numzgrid, type=float, dummyline="height of level (upper boundary)\n"
+            self._numzgrid,
+            type=float,
+            dummyline="    #            LEVEL           height of level (upper boundary)\n",
         )
 
     def read(self, f: TextIO):
@@ -1079,28 +1089,41 @@ class OutgridNest:
             dummyline="    #           DYOUTLON        grid distance in y direction or upper right corner of output grid\n",
         )
 
+    def is_in_file(self, f: TextIO) -> bool:
+        current_line = f.tell()
+        [f.readline() for i in range(8)]
+        expected_end_line = f.readline()
+        f.seek(current_line)
+        return "=====" in expected_end_line
+
     def read(self, f: TextIO):
-        f.readline()
-        self.outlonleft.read(f)
-        self.outlatlower.read(f)
-        self.numxgrid.read(f)
-        self.numygrid.read(f)
-        self.outgriddef.read(f)
-        self.dxoutlon.read(f)
-        self.dyoutlon.read(f)
+        if self.is_in_file(f):
+            f.readline()
+            self.outlonleft.read(f)
+            self.outlatlower.read(f)
+            self.numxgrid.read(f)
+            self.numygrid.read(f)
+            self.outgriddef.read(f)
+            self.dxoutlon.read(f)
+            self.dyoutlon.read(f)
+        else:
+            pass
 
     @property
     def lines(self):
-        lines = [
-            self._header,
-            self.outlonleft.line,
-            self.outlatlower.line,
-            self.numxgrid.line,
-            self.numygrid.line,
-            self.outgriddef.line,
-            self.dxoutlon.line,
-            self.dyoutlon.line,
-        ]
+        if self.outlonleft.value is None:
+            lines = []
+        else:
+            lines = [
+                self._header,
+                self.outlonleft.line,
+                self.outlatlower.line,
+                self.numxgrid.line,
+                self.numygrid.line,
+                self.outgriddef.line,
+                self.dxoutlon.line,
+                self.dyoutlon.line,
+            ]
         return lines
 
     @property
@@ -1567,7 +1590,7 @@ class Releases:
         )
         self._kindz = DynamicSpecifierArgument(
             specifier=self._numpoint,
-            type=float,
+            type=int,
             dummyline="#         KINDZ  (int)  1 for m above ground, 2 for m above sea level, 3 pressure\n",
         )
         self._zpoint1 = DynamicSpecifierArgument(
@@ -1582,7 +1605,7 @@ class Releases:
         )
         self._npart = DynamicSpecifierArgument(
             specifier=self._numpoint,
-            type=float,
+            type=int,
             dummyline="#          NPART (int)     total number of particles to be released\n",
         )
         self._xmass = NestedSpecifierArgument(
@@ -1605,13 +1628,13 @@ class Releases:
         for i in range(self.nspec.value):
             self.link.readline(f)
             if self.emitvar.value == 1:
-                self.ihour.readblock(f)
-                self.area_hour.readblock(f)
-                self.point_hour.readblock(f)
+                self.ihour.readcolumn(f)
+                self.area_hour.readcolumn(f)
+                self.point_hour.readcolumn(f)
                 [f.readline() for j in range(24)]
-                self.idow.readblock(f)
-                self.area_dow.readblock(f)
-                self.point_dow.readblock(f)
+                self.idow.readcolumn(f)
+                self.area_dow.readcolumn(f)
+                self.point_dow.readcolumn(f)
                 [f.readline() for j in range(7)]
         self.numpoint.read(f)
         for i in range(self.numpoint.value):
@@ -1637,13 +1660,13 @@ class Releases:
 
         else:
             for (
+                link_line,
                 ihour,
                 area_hour,
                 point_hour,
                 idow,
                 area_dow,
                 point_dow,
-                link_line,
             ) in zip(
                 self.link.lines,
                 self.ihour.as_strings(),
@@ -1701,6 +1724,24 @@ class Releases:
             lines.extend(xmass_lines)
             lines.append(name_line)
         return lines
+
+    def add_copy(self, release_index: int):
+        release_arguments = [
+            self.start,
+            self.stop,
+            self.xpoint1,
+            self.ypoint1,
+            self.xpoint2,
+            self.ypoint2,
+            self.kindz,
+            self.zpoint1,
+            self.zpoint2,
+            self.npart,
+            self.xmass,
+            self.name,
+        ]
+        for release_argument in release_arguments:
+            release_argument.append(release_argument.value[release_index])
 
     @property
     def nspec(self):
@@ -1921,6 +1962,7 @@ class FlexwrfInput:
     def lines(self) -> str:
         lines = []
         for option in self.options:
+            print(option)
             lines.extend(option.lines)
         return lines
 
