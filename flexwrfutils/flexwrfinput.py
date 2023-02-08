@@ -378,7 +378,7 @@ class Pathnames:
         self._footer = "=============================================================\n"
         self._outputpath = StaticArgument(type=Path, dummyline="#/\n")
         self._inputpath = DynamicArgument(type=Path, dummyline="#/\n")
-        self._availablepath = DynamicArgument(type=Path, dummyline="#/\n")
+        self._availablepath = DynamicArgument(type=Path, dummyline="#\n")
 
     def read(self, f: TextIO):
         f.readline()
@@ -2015,7 +2015,6 @@ class FlexwrfInput:
     def lines(self) -> str:
         lines = []
         for option in self.options:
-            print(option)
             lines.extend(option.lines)
         return lines
 
