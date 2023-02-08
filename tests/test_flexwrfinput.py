@@ -1,4 +1,4 @@
-from flexwrfutils.classes.flexwrfinput import (
+from flexwrfutils.flexwrfinput import (
     StaticArgument,
     DynamicArgument,
     StaticSpecifierArgument,
