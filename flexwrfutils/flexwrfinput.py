@@ -996,9 +996,9 @@ class Outgrid:
             type=float,
             dummyline="    #           DXOUTLON        grid distance in x direction or upper right corner of output grid\n",
         )
-        self._dyoutlon = StaticArgument(
+        self._dyoutlat = StaticArgument(
             type=float,
-            dummyline="    #           DYOUTLON        grid distance in y direction or upper right corner of output grid\n",
+            dummyline="    #           DYOUTLAT        grid distance in y direction or upper right corner of output grid\n",
         )
         self._numzgrid = StaticSpecifierArgument(
             dummyline="    #                NUMZGRID        number of vertical levels\n"
@@ -1017,7 +1017,7 @@ class Outgrid:
         self.numygrid.read(f)
         self.outgriddef.read(f)
         self.dxoutlon.read(f)
-        self.dyoutlon.read(f)
+        self.dyoutlat.read(f)
         self.numzgrid.read(f)
         self.levels.read(f)
 
@@ -1031,7 +1031,7 @@ class Outgrid:
             self.numygrid.line,
             self.outgriddef.line,
             self.dxoutlon.line,
-            self.dyoutlon.line,
+            self.dyoutlat.line,
             self.numzgrid.line,
         ]
         lines.extend(self.levels.lines)
@@ -1086,12 +1086,12 @@ class Outgrid:
         self.dxoutlon.value = value
 
     @property
-    def dyoutlon(self):
-        return self._dyoutlon
+    def dyoutlat(self):
+        return self._dyoutlat
 
-    @dyoutlon.setter
-    def dyoutlon(self, value):
-        self.dyoutlon.value = value
+    @dyoutlat.setter
+    def dyoutlat(self, value):
+        self.dyoutlat.value = value
 
     @property
     def numzgrid(self):
@@ -1137,9 +1137,9 @@ class OutgridNest:
             type=float,
             dummyline="    #           DXOUTLON        grid distance in x direction or upper right corner of output grid\n",
         )
-        self._dyoutlon = StaticArgument(
+        self._dyoutlat = StaticArgument(
             type=float,
-            dummyline="    #           DYOUTLON        grid distance in y direction or upper right corner of output grid\n",
+            dummyline="    #           DYOUTLAT        grid distance in y direction or upper right corner of output grid\n",
         )
 
     def is_in_file(self, f: TextIO) -> bool:
@@ -1158,7 +1158,7 @@ class OutgridNest:
             self.numygrid.read(f)
             self.outgriddef.read(f)
             self.dxoutlon.read(f)
-            self.dyoutlon.read(f)
+            self.dyoutlat.read(f)
         else:
             pass
 
@@ -1175,7 +1175,7 @@ class OutgridNest:
                 self.numygrid.line,
                 self.outgriddef.line,
                 self.dxoutlon.line,
-                self.dyoutlon.line,
+                self.dyoutlat.line,
             ]
         return lines
 
@@ -1228,12 +1228,12 @@ class OutgridNest:
         self.dxoutlon.value = value
 
     @property
-    def dyoutlon(self):
-        return self._dyoutlon
+    def dyoutlat(self):
+        return self._dyoutlat
 
-    @dyoutlon.setter
-    def dyoutlon(self, value):
-        self.dyoutlon.value = value
+    @dyoutlat.setter
+    def dyoutlat(self, value):
+        self.dyoutlat.value = value
 
 
 class Receptor:
