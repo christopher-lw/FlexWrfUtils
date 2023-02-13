@@ -122,7 +122,8 @@ class Test_OutputPath:
         with example_path.open() as f:
             f.readline()
             Argument.read(f)
-        assert Argument.line == "/scratch2/portfolios/BMC/stela/jbrioude/test_depo1/\n"
+        target_path = Path("/scratch2/portfolios/BMC/stela/jbrioude/test_depo1/")
+        assert Argument.line == f"{target_path}/\n"
 
     def test_read(self, example_path):
         Argument = StaticArgument(type=Path, dummyline="#/\n")
