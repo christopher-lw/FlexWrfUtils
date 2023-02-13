@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Optional, Tuple, Dict
+from typing import Union, Optional, Tuple
 
 import xarray as xr
 import matplotlib.pyplot as plt
@@ -22,6 +22,13 @@ def combine(flxout: xr.Dataset, header: xr.Dataset) -> xr.Dataset:
     return combined
 
 
+def add_osm_subplot(fig: plt.Figure, zoom_level: int = 10, **kwargs) -> plt.Axes:
+    request = cimgt.OSM()
+    ax = fig.add_subplot(projection=request.crs, **kwargs)
+    ax.add_image(request, zoom_level)
+    return ax
+
+
 class FlexwrfOutput:
     def __init__(
         self, flxout: Optional[xr.Dataset] = None, header: Optional[xr.Dataset] = None
@@ -29,36 +36,35 @@ class FlexwrfOutput:
         self._flxout = flxout
         self._header = header
         self._data: xr.Dataset = None
+        self._total: xr.DataArray = None
 
     def read(self, flxout_path: Union[str, Path], header_path: Union[str, Path]):
         self._flxout = xr.open_dataset(flxout_path)
-        self._header = xr.open_dataset(flxout_path)
+        self._header = xr.open_dataset(header_path)
 
-    def plot_sum(
-        self,
-        osm_zoom_level: int = 10,
-        figsize: Tuple[float, float] = None,
-        subplot_kw: Dict = dict(),
-        **kwargs
-    ) -> Tuple[plt.Figure, plt.Axes, QuadMesh]:
-        request = cimgt.OSM()
-        fig, ax = plt.subplots(
-            figsize=figsize,
-            subplot_kw=dict(projection=request.crs, **subplot_kw),
-        )
-        ax.add_image(request, osm_zoom_level)
-        summed_footprint = (
-            self.data.CONC.squeeze(drop=True)
-            .isel(bottom_top=0)
-            .sum(["Time", "releases"])
-        )
-        summed_footprint = summed_footprint.where(summed_footprint > 0)
-        xy = ax.projection.transform_points(
-            ccrs.Geodetic(), self.longitudes, self.latitudes
-        )
-        mesh = ax.pcolormesh(xy[..., 0], xy[..., 1], summed_footprint, **kwargs)
+    def plot_on_osm(
+        self, ax: plt.Axes, data: Optional[xr.DataArray] = None, **kwargs
+    ) -> Tuple[plt.Axes, QuadMesh]:
+        if data is None:
+            data = self.total
+        data = data.where(data > 0)
+        longitudes = data.XLONG.values
+        latitudes = data.XLAT.values
+        xy = ax.projection.transform_points(ccrs.Geodetic(), longitudes, latitudes)
+        mesh = ax.pcolormesh(xy[..., 0], xy[..., 1], data, **kwargs)
         ax.set_extent(self.extent)
-        return fig, ax, mesh
+        return ax, mesh
+
+    def isel(self, *args, **kwargs):
+        return self.data.isel(*args, **kwargs)
+
+    @staticmethod
+    def sum_non_spatial(xarr: xr.DataArray):
+        summable_dimenions = [
+            dim for dim in xarr.dims if dim not in ["south_north", "west_east"]
+        ]
+        xarr_summed = xarr.sum(summable_dimenions).squeeze(drop=True)
+        return xarr_summed
 
     @property
     def extent(self):
@@ -73,6 +79,17 @@ class FlexwrfOutput:
         if self._data is None:
             self._data = combine(self._flxout, self._header)
         return self._data
+
+    @property
+    def total(self):
+        if self._total is None:
+            summable_dimenions = [
+                dim
+                for dim in self.data.CONC.dims
+                if dim not in ["south_north", "west_east"]
+            ]
+            self._total = self.data.CONC.sum(summable_dimenions).squeeze(drop=True)
+        return self._total
 
     @property
     def values(self):
