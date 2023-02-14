@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Union, Optional, Tuple
 
 import xarray as xr
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import QuadMesh
 import cartopy.crs as ccrs
@@ -102,3 +103,17 @@ class FlexwrfOutput:
     @property
     def latitudes(self):
         return self.data.XLAT.values
+
+    @property
+    def times(self):
+        time_strings = np.char.decode(self.data.Times.values)
+        datetime_strings = np.char.split(time_strings, "_")
+        datetimes = np.array(
+            [
+                np.datetime64(
+                    f"{t[0][:4]}-{t[0][4:6]}-{t[0][6:]}T{t[1][:2]}:{t[1][2:4]}:{t[1][4:]}"
+                )
+                for t in datetime_strings
+            ]
+        )
+        return datetimes
