@@ -1,3 +1,27 @@
+"""Functions and classes to handle the input files for FLEXPART-WRF
+
+The main tool of `flexwrfinput` is the class `FlexwrfInput` which acts as
+a parser for FLEXPART-WRF input files. It allows reading, manipulating and
+writing of the files. A file can be loaded via `read_input`.
+
+Example:
+    To read an input file use the `read_input` function::
+
+        $ from flexwrfutils import read_input
+        $ input_path = "path/to/flexwrf.input"
+        $ loaded_input = read_input(input_path)
+
+    Now you can manipulate the values of the loaded input file in the
+    `FlexwrfInput` instance. For instance for changing the `LDIRECT`
+    option of the `COMMAND` part use::
+
+        $ loaded_input.command.ldirect = -1
+
+    The changed input can be written into a file via the `write` method::
+
+        $ loaded_input.write("path/to/new.flexwrf.input")
+"""
+
 from typing import TextIO, Any, List, Union
 from pathlib import Path
 import numpy as np
@@ -5,7 +29,15 @@ from datetime import datetime
 import pandas as pd
 
 
-def peek_line(f: TextIO):
+def peek_line(f: TextIO) -> str:
+    """Reads out upcoming line of opened file without advancing the iterator.
+
+    Args:
+        f (TextIO): File to peek into.
+
+    Returns:
+        str: Upcoming line
+    """
     pos = f.tell()
     line = f.readline()
     f.seek(pos)
@@ -13,6 +45,8 @@ def peek_line(f: TextIO):
 
 
 class BaseArgument:
+    """Implements basic functionalities for a parsed argument of FLEXPART-WRF"""
+
     def __init__(self, type=None, dummyline=None):
         self._type = type
         self._dummyline = dummyline
@@ -27,15 +61,30 @@ class BaseArgument:
         self._value = self._type(value)
 
     def read(self, file: TextIO):
+        """Reads line of given file, casts and saves value given in line.
+
+        Args:
+            file (TextIO): File to read from
+        """
         line = file.readline()
         self.value = self.linecaster(line)
 
     def linecaster(self, line: str) -> Any:
+        """Extracts value of a string and casts it to the arguments type.
+
+        Args:
+            line (str): Line to decode.
+
+        Returns:
+            Any: Cast value.
+        """
         decoded_line = self._type(line.strip().split(" ")[0])
         return decoded_line
 
 
 class StaticArgument(BaseArgument):
+    """Holds value of argument with only one value."""
+
     def __init__(self, type=None, dummyline=None):
         super().__init__(type, dummyline)
 
@@ -45,6 +94,8 @@ class StaticArgument(BaseArgument):
 
 
 class DynamicArgument(BaseArgument):
+    """Holds argument with variable number of values"""
+
     def __init__(self, type=None, dummyline=None):
         super().__init__(type, dummyline)
         self._n_values = 0
@@ -59,10 +110,20 @@ class DynamicArgument(BaseArgument):
         self._value = new_values
 
     def readline(self, file: TextIO):
+        """Reads a single line and appends the value to arguments values.
+
+        Args:
+            file (TextIO): File to read from.
+        """
         line = file.readline()
         self.append(self.linecaster(line))
 
     def read(self, file: TextIO, n_values):
+        """Reads n_values lines of given file, casts and saves value given in line.
+
+        Args:
+            file (TextIO): File to read from.
+        """
         for i in range(n_values):
             line = file.readline()
             self.append(self.linecaster(line))
@@ -73,11 +134,21 @@ class DynamicArgument(BaseArgument):
         return lines
 
     def append(self, value):
+        """Add value to list of values.
+
+        Args:
+            value (Any): Value to add.
+        """
         self._value.append(value)
         self._n_values += 1
 
-    def remove(self, index):
-        self._value.remove(self.value[-1])
+    def remove(self, index: int):
+        """Removes value at given position in value list.
+
+        Args:
+            index (int): Position of value to delete.
+        """
+        self._value.remove(self.value[index])
         self._n_values -= 1
 
     def __getitem__(self, index):
@@ -88,6 +159,8 @@ class DynamicArgument(BaseArgument):
 
 
 class DatetimeArgument(StaticArgument):
+    """Same as StaticArgument adjusted for values holding a date and time."""
+
     def __init__(self, dummyline=None):
         super().__init__(dummyline=dummyline)
 
@@ -110,6 +183,8 @@ class DatetimeArgument(StaticArgument):
 
 
 class StaticSpecifierArgument(StaticArgument):
+    """Static argument that contains information on length of another dynamic argument."""
+
     def __init__(self, type=None, dummyline=None):
         super().__init__(type, dummyline)
         self._type = int
@@ -117,6 +192,8 @@ class StaticSpecifierArgument(StaticArgument):
 
 
 class DynamicSpecifierArgument(BaseArgument):
+    """Dynamic argument with the length being specified by another argument."""
+
     def __init__(
         self,
         specifier: StaticSpecifierArgument,
@@ -142,10 +219,20 @@ class DynamicSpecifierArgument(BaseArgument):
         self.value[index] = self._type(value)
 
     def readline(self, file: TextIO):
+        """Reads a single line and appends the value to arguments values.
+
+        Args:
+            file (TextIO): File to read from.
+        """
         line = file.readline()
         self.append(self.linecaster(line))
 
     def read(self, file: TextIO):
+        """Reads n_values lines of given file, casts and saves value given in line.
+
+        Args:
+            file (TextIO): File to read from.
+        """
         n_values = self.specifier.value
         for i in range(n_values):
             line = file.readline()
@@ -157,15 +244,27 @@ class DynamicSpecifierArgument(BaseArgument):
         return lines
 
     def append(self, value):
+        """Add value to list of values.
+
+        Args:
+            value (Any): Value to add.
+        """
         self._value.append(value)
         self.specifier.value = len(self._value)
 
     def remove(self, index):
+        """Removes value at given position in value list.
+
+        Args:
+            index (int): Position of value to delete.
+        """
         self._value.remove(self.value[index])
         self.specifier.value = len(self._value)
 
 
 class DynamicDatetimeArgument(DynamicSpecifierArgument):
+    """Same as DynamicSpecifierArgument with date and time as information."""
+
     def __init__(
         self,
         specifier: StaticSpecifierArgument,
@@ -201,6 +300,8 @@ class DynamicDatetimeArgument(DynamicSpecifierArgument):
 
 
 class SpeciesArgument(DynamicSpecifierArgument):
+    """Special class for arguments of the Species category."""
+
     def __init__(
         self,
         specifier: StaticSpecifierArgument,
@@ -226,7 +327,12 @@ class SpeciesArgument(DynamicSpecifierArgument):
             self.append(new_value)
         file.seek(start_line_index)
 
-    def as_strings(self):
+    def as_strings(self) -> List[str]:
+        """Formats values into strings.
+
+        Returns:
+            List[str]: List of strings
+        """
         strings = []
         for value in self.value:
             if value is None:
@@ -238,6 +344,8 @@ class SpeciesArgument(DynamicSpecifierArgument):
 
 
 class DynamicTableArgument(DynamicSpecifierArgument):
+    """DynamicSpecifierArgument that is not printed into separate line but part of rows in a table."""
+
     def __init__(
         self,
         specifier: StaticSpecifierArgument,
@@ -264,7 +372,12 @@ class DynamicTableArgument(DynamicSpecifierArgument):
             casted_new_values.append(casted_new_value_list)
         self._value = casted_new_values
 
-    def readcolumn(self, f):
+    def readcolumn(self, f: TextIO):
+        """Reads values of a column from the given file and resets the file to the previous state.
+
+        Args:
+            f (TextIO): File to read from.
+        """
         start_line_index = f.tell()
         new_values = []
         for i in range(self.length):
@@ -274,7 +387,12 @@ class DynamicTableArgument(DynamicSpecifierArgument):
         self._value.append(new_values)
         f.seek(start_line_index)
 
-    def as_strings(self):
+    def as_strings(self) -> List[List[str]]:
+        """Formats values into strings.
+
+        Returns:
+            List[List[str]]: Formatted strings. Dimensions denote: (table, row)
+        """
         strings = []
         for values in self._value:
             new_strings = [self.formatter.format(value) for value in values]
@@ -292,6 +410,8 @@ class DynamicTableArgument(DynamicSpecifierArgument):
 
 
 class NestedSpecifierArgument:
+    """Holds Argument with two dimensions. Each dimensions is specified by another argument."""
+
     def __init__(
         self,
         specifier1: StaticSpecifierArgument,
@@ -315,13 +435,23 @@ class NestedSpecifierArgument:
         self.value[index] = value
 
     def readblock(self, f: TextIO):
+        """Reads one block of values determined by second specifier.
+
+        Args:
+            f (TextIO): File to read from.
+        """
         new_values = []
         for i in range(self.specifier2.value):
             line = f.readline()
             new_values.append(self.linecaster(line))
         self.value.append(new_values)
 
-    def as_string(self):
+    def as_string(self) -> List[List[str]]:
+        """Formats values into strings.
+
+        Returns:
+            List[List[str]]: Formatted strings. Dimensions denote: (table, row)
+        """
         strings = []
         for values in self._value:
             new_strings = [self.formatter.format(value) for value in values]
@@ -373,6 +503,8 @@ class NestedSpecifierArgument:
 
 
 class Pathnames:
+    """Holds arguments of the pathnames option."""
+
     def __init__(self):
         self._header = "=====================FORMER PATHNAMES FILE===================\n"
         self._footer = "=============================================================\n"
@@ -381,6 +513,11 @@ class Pathnames:
         self._availablepath = DynamicArgument(type=Path, dummyline="#\n")
 
     def read(self, f: TextIO):
+        """Reads arguments of all arguments from file.
+
+        Args:
+            f (TextIO): File to read from.
+        """
         f.readline()
         self.outputpath.read(f)
         while "====" not in peek_line(f):
@@ -427,6 +564,8 @@ class Pathnames:
 
 
 class Command:
+    """Holds arguments of the command option."""
+
     def __init__(self):
         self._header = "=====================FORMER COMMAND FILE=====================\n"
         self._ldirect = StaticArgument(
@@ -569,6 +708,11 @@ class Command:
         )
 
     def read(self, f: TextIO):
+        """Reads arguments of all arguments from file.
+
+        Args:
+            f (TextIO): File to read from.
+        """
         f.readline()
         self.ldirect.read(f)
         self.start.read(f)
@@ -930,6 +1074,8 @@ class Command:
 
 
 class Ageclasses:
+    """Holds arguments of the ageclasses option."""
+
     def __init__(self):
         self._header = "=====================FORMER AGECLASESS FILE==================\n"
         self._nageclasses = StaticSpecifierArgument(
@@ -942,6 +1088,11 @@ class Ageclasses:
         )
 
     def read(self, f):
+        """Reads arguments of all arguments from file.
+
+        Args:
+            f (TextIO): File to read from.
+        """
         f.readline()
         self.nageclasses.read(f)
         self.ageclasses.read(f)
@@ -970,6 +1121,8 @@ class Ageclasses:
 
 
 class Outgrid:
+    """Holds outgrid of the command option."""
+
     def __init__(self):
         self._header = "=====================FORMER OUTGRID FILE=====================\n"
         self._outlonleft = StaticArgument(
@@ -1010,6 +1163,11 @@ class Outgrid:
         )
 
     def read(self, f: TextIO):
+        """Reads arguments of all arguments from file.
+
+        Args:
+            f (TextIO): File to read from.
+        """
         f.readline()
         self.outlonleft.read(f)
         self.outlatlower.read(f)
@@ -1111,6 +1269,8 @@ class Outgrid:
 
 
 class OutgridNest:
+    """Holds arguments of the outgrid nest option."""
+
     def __init__(self):
         self._header = "================OUTGRID_NEST==========================\n"
         self._outlonleft = StaticArgument(
@@ -1143,6 +1303,7 @@ class OutgridNest:
         )
 
     def is_in_file(self, f: TextIO) -> bool:
+        """Tests if the Outgrid Nest option is present in the file"""
         current_line = f.tell()
         [f.readline() for i in range(8)]
         expected_end_line = f.readline()
@@ -1150,6 +1311,11 @@ class OutgridNest:
         return "=====" in expected_end_line
 
     def read(self, f: TextIO):
+        """Reads arguments of all arguments from file.
+
+        Args:
+            f (TextIO): File to read from.
+        """
         if self.is_in_file(f):
             f.readline()
             self.outlonleft.read(f)
@@ -1237,6 +1403,8 @@ class OutgridNest:
 
 
 class Receptor:
+    """Holds arguments of the Receptor option."""
+
     def __init__(self):
         self._header = "=====================FORMER RECEPTOR FILE====================\n"
         self._numreceptor = StaticSpecifierArgument(
@@ -1253,6 +1421,11 @@ class Receptor:
         )
 
     def read(self, f: TextIO):
+        """Reads arguments of all arguments from file.
+
+        Args:
+            f (TextIO): File to read from.
+        """
         f.readline()
         self.numreceptor.read(f)
         for i in range(self.numreceptor.value):
@@ -1306,6 +1479,7 @@ class Receptor:
 
 class Species:
     def __init__(self):
+        """Holds arguments of the species option."""
         self._header = "=====================FORMER SPECIES FILE=====================\n"
         self._legend = "XXXX|NAME    |decaytime |wetscava  |wetsb|drydif|dryhenry|drya|partrho  |parmean|partsig|dryvelo|weight |\n"
         self._numtable = StaticSpecifierArgument(
@@ -1392,6 +1566,11 @@ class Species:
         )
 
     def read(self, f: TextIO):
+        """Reads arguments of all arguments from file.
+
+        Args:
+            f (TextIO): File to read from.
+        """
         f.readline()
         self.numtable.read(f)
         f.readline()
@@ -1538,6 +1717,8 @@ class Species:
 
 
 class Releases:
+    """Holds arguments of the releases option."""
+
     def __init__(self):
         self._header = "=====================FORMER RELEEASES FILE===================\n"
         self._nspec = StaticSpecifierArgument(
@@ -1979,6 +2160,8 @@ class Releases:
 
 
 class FlexwrfInput:
+    """Class to read, manipulate and save flexwrf.input files."""
+
     def __init__(self):
         self._pathnames = Pathnames()
         self._command = Command()
@@ -2000,6 +2183,11 @@ class FlexwrfInput:
         ]
 
     def read(self, file_path: Union[str, Path]):
+        """Reads flexwrf.input file and saves values in class instance.
+
+        Args:
+            file_path (Union[str, Path]): File path to read from
+        """
         file_path = Path(file_path)
         with file_path.open("r") as f:
             for option in self.options:
@@ -2049,3 +2237,18 @@ class FlexwrfInput:
     @property
     def releases(self):
         return self._releases
+
+
+def read_input(input_path: Union[str, Path]) -> FlexwrfInput:
+    """Reads flexwrf.input file into FlexwrfInput instance.
+
+    Args:
+        input_path (Union[str, Path]): Path of input file.
+
+    Returns:
+        FlexwrfInput: Instance with data loaded from input file.
+    """
+    input_path = Path(input_path)
+    input_class = FlexwrfInput()
+    input_class.read(input_path)
+    return input_class

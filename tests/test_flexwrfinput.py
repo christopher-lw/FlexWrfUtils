@@ -6,6 +6,7 @@ from flexwrfutils.flexwrfinput import (
     DatetimeArgument,
     FlexwrfInput,
     SpeciesArgument,
+    read_input,
 )
 import numpy as np
 from datetime import datetime
@@ -324,3 +325,15 @@ class Test_FlexwrfInput:
         assert (
             len(wrong_endings) == 0
         ), f"No proper end of line character in lines:\n{wrong_endings}"
+
+
+############################################
+######## Test additional functions #########
+############################################
+
+
+def test_read_input(example_path):
+    input_instance = FlexwrfInput()
+    input_instance.read(example_path)
+    read_instance = read_input(example_path)
+    assert input_instance.lines == read_instance.lines
