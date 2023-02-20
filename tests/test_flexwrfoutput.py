@@ -8,9 +8,13 @@ from flexwrfutils.flexwrfoutput import combine, FlexwrfOutput
 
 @pytest.fixture
 def flxout():
+    times = np.array(
+        [b"20210802_150000", b"20210802_140000", b"20210802_130000"], dtype="|S15"
+    )
+
     flxout = xr.Dataset(
         data_vars=dict(
-            Time=(["Times"], np.arange(3)),
+            Times=(["Time"], times),
             CONC=(
                 [
                     "Time",
@@ -82,13 +86,12 @@ class Test_FlexwrfOutput:
         assert simple_flexwrf_output.total.values[0][0] == 12
 
     def test_isel(self, simple_flexwrf_output):
-        assert simple_flexwrf_output.data.isel(
-            releases=0
-        ) == simple_flexwrf_output.isel(releases=0)
+        selected_output = simple_flexwrf_output.isel(releases=0)
+        assert selected_output.data == simple_flexwrf_output.data.isel(releases=0)
 
     def test_sum_non_spatial(self, simple_flexwrf_output):
         summed_data = FlexwrfOutput.sum_non_spatial(
-            simple_flexwrf_output.isel(releases=0).CONC
+            simple_flexwrf_output.isel(releases=0).data.CONC
         )
         assert len(summed_data.dims) == 2
 
@@ -98,3 +101,10 @@ class Test_FlexwrfOutput:
         assert extent[1] == simple_flexwrf_output.data.XLONG_CORNER.max()
         assert extent[2] == simple_flexwrf_output.data.XLAT_CORNER.min()
         assert extent[3] == simple_flexwrf_output.data.XLAT_CORNER.max()
+
+    def test_concentrations(self, simple_flexwrf_output):
+        concentrations = simple_flexwrf_output.formatted_concentrations
+        assert (
+            simple_flexwrf_output.data.CONC.squeeze(drop=True).values
+            == concentrations.values
+        ).all()

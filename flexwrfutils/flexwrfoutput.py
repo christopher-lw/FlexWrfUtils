@@ -57,7 +57,9 @@ class FlexwrfOutput:
         return ax, mesh
 
     def isel(self, *args, **kwargs):
-        return self.data.isel(*args, **kwargs)
+        flxout = self._flxout.isel(*args, **kwargs)
+        header = self._header.isel(*args, **kwargs)
+        return FlexwrfOutput(flxout, header)
 
     @staticmethod
     def sum_non_spatial(xarr: xr.DataArray):
@@ -117,3 +119,28 @@ class FlexwrfOutput:
             ]
         )
         return datetimes
+
+    @property
+    def formatted_concentrations(self) -> xr.DataArray:
+        concentrations = self.data.CONC
+        concentrations = concentrations.assign_coords(Time=self.times)
+        concentrations = concentrations.rename(Time="time")
+        concentrations = concentrations.squeeze(drop=True)
+        concentrations = concentrations.drop(["XLONG", "XLAT"]).assign_coords(
+            dict(
+                latitude=(["south_north"], self.latitudes[:, 0]),
+                longitude=(["west_east"], self.longitudes[0]),
+            )
+        )
+        return concentrations
+
+
+def read_output(
+    flxout_path: Union[str, Path], header_path: Union[str, Path]
+) -> FlexwrfOutput:
+    flxout_path = Path(flxout_path)
+    header_path = Path(header_path)
+    flxout_data = xr.open_dataset(flxout_path)
+    header_data = xr.open_dataset(header_path)
+    output = FlexwrfOutput(flxout_data, header_data)
+    return output
