@@ -1,3 +1,6 @@
+"""This file contains functions and classes to handle the output of FLEXPART-WRF
+
+"""
 from pathlib import Path
 from typing import Union, Optional, Tuple
 
@@ -28,6 +31,19 @@ def add_osm_subplot(fig: plt.Figure, zoom_level: int = 10, **kwargs) -> plt.Axes
     ax = fig.add_subplot(projection=request.crs, **kwargs)
     ax.add_image(request, zoom_level)
     return ax
+
+
+def get_output_paths(path=Union[str, Path]) -> Tuple[Path, Path]:
+    path = Path(path)
+    header_files = [file for file in path.iterdir() if "header" in str(file)]
+    flxout_files = [file for file in path.iterdir() if "flxout" in str(file)]
+
+    assert (
+        len(header_files) == 1
+    ), f"Didn't find unique header files in {path}: {header_files}"
+    assert len(flxout_files) == 1, f"Didn't find unique file in {path}: {flxout_files}"
+
+    return flxout_files[0], header_files[0]
 
 
 class FlexwrfOutput:
@@ -81,7 +97,23 @@ class FlexwrfOutput:
     def data(self):
         if self._data is None:
             self._data = combine(self._flxout, self._header)
+            self._data = self._data.assign_coords(Time=self.times)
         return self._data
+
+    @property
+    def surface_layer_height(self) -> np.ndarray:
+        return self.data.ZTOP.values
+
+    # @data.setter
+    # def data(self, value: xr.Dataset):
+    #     assert (
+    #         np.array([value[coord].values.shape == self.data[coord].values.shape for coord in self.data.coords])
+    #     ).all(), "The shapes of the coordinates of the new data does not match."
+
+    #     assert (
+    #         np.array([value[var].values.shape == self.data[var].values.shape for var in self.data.data_vars])
+    #     ).all(), "The shapes of the data variables of the new data does not match."
+    #     self._data = value
 
     @property
     def total(self):
@@ -108,7 +140,7 @@ class FlexwrfOutput:
 
     @property
     def times(self):
-        time_strings = np.char.decode(self.data.Times.values)
+        time_strings = np.char.decode(self._flxout.Times.values)
         datetime_strings = np.char.split(time_strings, "_")
         datetimes = np.array(
             [
