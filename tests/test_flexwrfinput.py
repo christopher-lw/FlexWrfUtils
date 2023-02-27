@@ -13,6 +13,7 @@ import numpy as np
 from datetime import datetime
 import pytest
 from pathlib import Path
+import os
 
 
 @pytest.fixture
@@ -120,15 +121,15 @@ class Test_OutputPath:
         assert Argument.linecaster(line) == Path("test/path")
 
     def test_line(self, example_path):
-        Argument = StaticArgument(type=Path, dummyline="#/\n")
+        Argument = StaticArgument(type=Path, dummyline=f"#{os.path.sep}\n")
         with example_path.open() as f:
             f.readline()
             Argument.read(f)
         target_path = Path("/scratch2/portfolios/BMC/stela/jbrioude/test_depo1/")
-        assert Argument.line == f"{target_path}/\n"
+        assert Argument.line == f"{target_path}{os.path.sep}\n"
 
     def test_read(self, example_path):
-        Argument = StaticArgument(type=Path, dummyline="#/\n")
+        Argument = StaticArgument(type=Path, dummyline=f"#{os.path.sep}\n")
 
         with example_path.open() as f:
             f.readline()

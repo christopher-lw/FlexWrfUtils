@@ -29,6 +29,7 @@ import numpy as np
 from datetime import datetime
 import pandas as pd
 from copy import deepcopy
+import os
 
 
 def peek_line(f: TextIO) -> str:
@@ -510,8 +511,8 @@ class Pathnames:
     def __init__(self):
         self._header = "=====================FORMER PATHNAMES FILE===================\n"
         self._footer = "=============================================================\n"
-        self._outputpath = StaticArgument(type=Path, dummyline="#/\n")
-        self._inputpath = DynamicArgument(type=Path, dummyline="#/\n")
+        self._outputpath = StaticArgument(type=Path, dummyline=f"#{os.path.sep}\n")
+        self._inputpath = DynamicArgument(type=Path, dummyline=f"#{os.path.sep}\n")
         self._availablepath = DynamicArgument(type=Path, dummyline="#\n")
 
     def read(self, f: TextIO):
@@ -1856,6 +1857,9 @@ class Releases:
             type=str,
             dummyline="#  NAME OF RELEASE LOCATION\n",
         )
+
+    def __len__(self) -> int:
+        return self.numpoint.value
 
     def read(self, f: TextIO):
         f.readline()
