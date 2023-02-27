@@ -6,6 +6,7 @@ from flexwrfutils.flexwrfinput import (
     DatetimeArgument,
     FlexwrfInput,
     SpeciesArgument,
+    Releases,
     read_input,
 )
 import numpy as np
@@ -207,6 +208,18 @@ class Test_Species:
     def test_as_string_wetsb(self, wetsb):
         numtable, species = wetsb
         assert species.as_strings() == ["      ", "  0.80"]
+
+
+class Test_Releases:
+    def test_add_copy(self, example_path, flexwrfinput):
+        flexwrfinput.read(example_path)
+        releases: Releases = flexwrfinput.releases
+        releases.add_copy(release_index=0)
+        assert releases.numpoint.value == 3
+        releases.xpoint1[1] = 50
+        releases.add_copy(release_index=1, releases=releases)
+        assert releases.numpoint.value == 4
+        assert releases.xpoint1[1] == releases.xpoint1[1]
 
 
 class Test_FlexwrfInput:

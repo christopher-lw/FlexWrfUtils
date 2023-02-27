@@ -21,12 +21,14 @@ Example:
 
         $ loaded_input.write("path/to/new.flexwrf.input")
 """
+from __future__ import annotations
 
-from typing import TextIO, Any, List, Union
+from typing import TextIO, Any, List, Union, Optional
 from pathlib import Path
 import numpy as np
 from datetime import datetime
 import pandas as pd
+from copy import deepcopy
 
 
 def peek_line(f: TextIO) -> str:
@@ -1959,8 +1961,29 @@ class Releases:
             lines.append(name_line)
         return lines
 
-    def add_copy(self, release_index: int):
-        release_arguments = [
+    def add_copy(self, release_index: int, releases: Optional[Releases] = None):
+        """Adds a copy of another release to the releases. Either
+
+        Args:
+            release_index (int): _description_
+            releases (Optional[Releases], optional): _description_. Defaults to None.
+        """
+        releases = self if releases is None else releases
+        new_release_arguments = [
+            releases.start,
+            releases.stop,
+            releases.xpoint1,
+            releases.ypoint1,
+            releases.xpoint2,
+            releases.ypoint2,
+            releases.kindz,
+            releases.zpoint1,
+            releases.zpoint2,
+            releases.npart,
+            releases.xmass,
+            releases.name,
+        ]
+        old_release_arguments = [
             self.start,
             self.stop,
             self.xpoint1,
@@ -1974,8 +1997,12 @@ class Releases:
             self.xmass,
             self.name,
         ]
-        for release_argument in release_arguments:
-            release_argument.append(release_argument.value[release_index])
+        for old_release_argument, new_release_argument in zip(
+            old_release_arguments, new_release_arguments
+        ):
+            old_release_argument.append(
+                deepcopy(new_release_argument.value[release_index])
+            )
 
     @property
     def nspec(self):
