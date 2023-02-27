@@ -25,11 +25,15 @@ from __future__ import annotations
 
 from typing import TextIO, Any, List, Union, Optional
 from pathlib import Path
-import numpy as np
-from datetime import datetime
-import pandas as pd
 from copy import deepcopy
 import os
+import yaml
+import numpy as np
+import xarray as xr
+from datetime import datetime
+import pandas as pd
+
+from flexwrfutils import default_config
 
 
 def peek_line(f: TextIO) -> str:
@@ -1182,6 +1186,20 @@ class Outgrid:
         self.numzgrid.read(f)
         self.levels.read(f)
 
+    def from_wrf_emissions(
+        self, inner_emissions: xr.Dataset, outer_emissions: xr.Dataset
+    ):
+        """Reads values for outgrid to be equivalent to the grid of emmissions.
+
+        Args:
+            inner_emissions (xr.Dataset): Emission data of inner domain
+            outer_emissions (xr.Dataset): Emission data of outer domain
+        """
+        raise NotImplementedError
+
+    def from_wrf_input(self, wrf_input):
+        raise NotImplementedError
+
     @property
     def lines(self):
         lines = [
@@ -2213,16 +2231,25 @@ class FlexwrfInput:
             self._releases,
         ]
 
-    def read(self, file_path: Union[str, Path]):
+    def read(self, file_path: Union[str, Path], is_config: bool = False):
         """Reads flexwrf.input file and saves values in class instance.
 
         Args:
             file_path (Union[str, Path]): File path to read from
         """
+
         file_path = Path(file_path)
         with file_path.open("r") as f:
-            for option in self.options:
-                option.read(f)
+            if not is_config:
+                for option in self.options:
+                    option.read(f)
+            else:
+                config = default_config
+                new_config = yaml.safe_load(f)
+                config.update(new_config)
+                for option, arguments in config.to_dict().items():
+                    for argument, value in arguments.items():
+                        setattr(getattr(self, option), argument, value)
 
     def write(self, file_path: Union[str, Path]):
         file_path = Path(file_path)
@@ -2270,7 +2297,7 @@ class FlexwrfInput:
         return self._releases
 
 
-def read_input(input_path: Union[str, Path]) -> FlexwrfInput:
+def read_input(input_path: Union[str, Path], is_config: bool = False) -> FlexwrfInput:
     """Reads flexwrf.input file into FlexwrfInput instance.
 
     Args:
@@ -2281,5 +2308,5 @@ def read_input(input_path: Union[str, Path]) -> FlexwrfInput:
     """
     input_path = Path(input_path)
     input_class = FlexwrfInput()
-    input_class.read(input_path)
+    input_class.read(input_path, is_config)
     return input_class

@@ -1,0 +1,110 @@
+pathnames:
+  outputpath: ""
+  inputpath: [""]
+  availablepath: [""]
+
+command:
+  ldirect: -1
+  start: "20000101 000000"
+  stop: "20000101 010000"
+  outputrate: 3600
+  averagerate: 3600
+  samplingrate: 90
+  splittingtime: 99999999
+  syncronizationinterval: 90
+  ctl: 5
+  ifine: 10
+  iout: 1
+  ipout: 0
+  lsubgrid: 1
+  lconvection: 0
+  dtconv: 180.0
+  lagespectra: 0
+  ipin: 0
+  iflux: 0
+  ioutputforeachrel: 1
+  mdomainfill: 0
+  indsource: 1
+  indreceptor: 2
+  nestedoutput: 0
+  linitcond: 0
+  turboption: 1
+  luoption: 1
+  cblscheme: 0
+  sfcoption: 0
+  windoption: 0
+  timeoption: 0
+  outgridcoord: 0
+  releasecoord: 1
+  iouttype: 2
+  nctimerec: 10000
+  verbose: 0
+
+ageclasses:
+  nageclasses: 1
+  ageclasses: [999999]
+
+outgrid:
+  outlonleft: 0
+  outlatlower: 0
+  numxgrid: 1
+  numygrid: 1
+  outgriddef: 1
+  dxoutlon: 1000
+  dyoutlat: 1000
+  numzgrid: 1
+  levels: [60]
+
+outgrid_nest:
+  outlonleft: 0
+  outlatlower: 0
+  numxgrid: 1
+  numygrid: 1
+  outgriddef: 1000
+  dxoutlon: 1000
+  dyoutlat: 1000
+
+receptor:
+  numreceptor: 0
+  receptor: []
+  x: []
+  y: []
+
+species:
+  numtable: 1
+  name: ["CO2"]
+  decaytime: ["-999.9"]
+  wetscava: [-0.0000000099]
+#  wetsb: []
+  drydif: [-9.9]
+#  dryhenry: []
+#  drya: []
+  partrho: [-990000000]
+#  parmean: []
+#  partsig: []
+  dryvelo: [-9.99]
+  weight: [44.01]
+
+releases:
+  nspec: 1
+  emitvar: 0
+  link: [1]
+  ihour: []
+  area_hour: []
+  point_hour: []
+  idow: []
+  area_dow: []
+  point_dow: []
+  numpoint: 1
+  start: ["20000101 000000"]
+  stop: ["20000101 000100"]
+  xpoint1: [0]
+  ypoint1: [0]
+  xpoint2: [1]
+  ypoint2: [1]
+  kindz: [1]
+  zpoint1: [0]
+  zpoint2: [0]
+  npart: [10000]
+  xmass: [[1]]
+  name: ["template release"]
