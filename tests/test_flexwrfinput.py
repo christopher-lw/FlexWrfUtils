@@ -109,6 +109,12 @@ def flexwrfinput2():
     return flexwrfinput
 
 
+@pytest.fixture
+def config_path():
+    config_path = Path(__file__).parent / "file_examples" / "config.yaml"
+    return config_path
+
+
 ####################################
 ##### Tests for FlexwrfArgument ####
 ####################################
@@ -286,6 +292,11 @@ class Test_FlexwrfInput:
             )
         assert flexwrfinput.lines == flexwrfinput2.lines
 
+    def test_read_config(self, flexwrfinput: FlexwrfInput, config_path):
+        flexwrfinput.read(config_path, is_config=True)
+        assert flexwrfinput.command.start.value == "20000101 000000"
+        assert flexwrfinput.releases.name[1] == "another one"
+
     def test_set(self, example_path, flexwrfinput):
         flexwrfinput.read(example_path)
         flexwrfinput.pathnames.outputpath = "test/path"
@@ -350,4 +361,11 @@ def test_read_input(example_path):
     input_instance = FlexwrfInput()
     input_instance.read(example_path)
     read_instance = read_input(example_path)
+    assert input_instance.lines == read_instance.lines
+
+
+def test_read_config(config_path):
+    input_instance = FlexwrfInput()
+    input_instance.read(config_path, is_config=True)
+    read_instance = read_input(config_path, is_config=True)
     assert input_instance.lines == read_instance.lines
