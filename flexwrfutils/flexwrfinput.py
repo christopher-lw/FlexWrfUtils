@@ -21,12 +21,19 @@ Example:
 
         $ loaded_input.write("path/to/new.flexwrf.input")
 """
+from __future__ import annotations
 
-from typing import TextIO, Any, List, Union
+from typing import TextIO, Any, List, Union, Optional
 from pathlib import Path
+from copy import deepcopy
+import os
+import yaml
 import numpy as np
+import xarray as xr
 from datetime import datetime
 import pandas as pd
+
+from flexwrfutils import default_config
 
 
 def peek_line(f: TextIO) -> str:
@@ -508,8 +515,8 @@ class Pathnames:
     def __init__(self):
         self._header = "=====================FORMER PATHNAMES FILE===================\n"
         self._footer = "=============================================================\n"
-        self._outputpath = StaticArgument(type=Path, dummyline="#/\n")
-        self._inputpath = DynamicArgument(type=Path, dummyline="#/\n")
+        self._outputpath = StaticArgument(type=Path, dummyline=f"#{os.path.sep}\n")
+        self._inputpath = DynamicArgument(type=Path, dummyline=f"#{os.path.sep}\n")
         self._availablepath = DynamicArgument(type=Path, dummyline="#\n")
 
     def read(self, f: TextIO):
@@ -1178,6 +1185,20 @@ class Outgrid:
         self.dyoutlat.read(f)
         self.numzgrid.read(f)
         self.levels.read(f)
+
+    def from_wrf_emissions(
+        self, inner_emissions: xr.Dataset, outer_emissions: xr.Dataset
+    ):
+        """Reads values for outgrid to be equivalent to the grid of emmissions.
+
+        Args:
+            inner_emissions (xr.Dataset): Emission data of inner domain
+            outer_emissions (xr.Dataset): Emission data of outer domain
+        """
+        raise NotImplementedError
+
+    def from_wrf_input(self, wrf_input):
+        raise NotImplementedError
 
     @property
     def lines(self):
@@ -1855,6 +1876,9 @@ class Releases:
             dummyline="#  NAME OF RELEASE LOCATION\n",
         )
 
+    def __len__(self) -> int:
+        return self.numpoint.value
+
     def read(self, f: TextIO):
         f.readline()
         self.nspec.read(f)
@@ -1959,8 +1983,29 @@ class Releases:
             lines.append(name_line)
         return lines
 
-    def add_copy(self, release_index: int):
-        release_arguments = [
+    def add_copy(self, release_index: int, releases: Optional[Releases] = None):
+        """Adds a copy of another release to the releases. Either
+
+        Args:
+            release_index (int): _description_
+            releases (Optional[Releases], optional): _description_. Defaults to None.
+        """
+        releases = self if releases is None else releases
+        new_release_arguments = [
+            releases.start,
+            releases.stop,
+            releases.xpoint1,
+            releases.ypoint1,
+            releases.xpoint2,
+            releases.ypoint2,
+            releases.kindz,
+            releases.zpoint1,
+            releases.zpoint2,
+            releases.npart,
+            releases.xmass,
+            releases.name,
+        ]
+        old_release_arguments = [
             self.start,
             self.stop,
             self.xpoint1,
@@ -1974,8 +2019,12 @@ class Releases:
             self.xmass,
             self.name,
         ]
-        for release_argument in release_arguments:
-            release_argument.append(release_argument.value[release_index])
+        for old_release_argument, new_release_argument in zip(
+            old_release_arguments, new_release_arguments
+        ):
+            old_release_argument.append(
+                deepcopy(new_release_argument.value[release_index])
+            )
 
     @property
     def nspec(self):
@@ -2182,16 +2231,25 @@ class FlexwrfInput:
             self._releases,
         ]
 
-    def read(self, file_path: Union[str, Path]):
+    def read(self, file_path: Union[str, Path], is_config: bool = False):
         """Reads flexwrf.input file and saves values in class instance.
 
         Args:
             file_path (Union[str, Path]): File path to read from
         """
+
         file_path = Path(file_path)
         with file_path.open("r") as f:
-            for option in self.options:
-                option.read(f)
+            if not is_config:
+                for option in self.options:
+                    option.read(f)
+            else:
+                config = default_config
+                new_config = yaml.safe_load(f)
+                config.update(new_config)
+                for option, arguments in config.to_dict().items():
+                    for argument, value in arguments.items():
+                        setattr(getattr(self, option), argument, value)
 
     def write(self, file_path: Union[str, Path]):
         file_path = Path(file_path)
@@ -2239,7 +2297,7 @@ class FlexwrfInput:
         return self._releases
 
 
-def read_input(input_path: Union[str, Path]) -> FlexwrfInput:
+def read_input(input_path: Union[str, Path], is_config: bool = False) -> FlexwrfInput:
     """Reads flexwrf.input file into FlexwrfInput instance.
 
     Args:
@@ -2250,5 +2308,5 @@ def read_input(input_path: Union[str, Path]) -> FlexwrfInput:
     """
     input_path = Path(input_path)
     input_class = FlexwrfInput()
-    input_class.read(input_path)
+    input_class.read(input_path, is_config)
     return input_class

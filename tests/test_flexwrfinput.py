@@ -6,12 +6,14 @@ from flexwrfutils.flexwrfinput import (
     DatetimeArgument,
     FlexwrfInput,
     SpeciesArgument,
+    Releases,
     read_input,
 )
 import numpy as np
 from datetime import datetime
 import pytest
 from pathlib import Path
+import os
 
 
 @pytest.fixture
@@ -107,6 +109,12 @@ def flexwrfinput2():
     return flexwrfinput
 
 
+@pytest.fixture
+def config_path():
+    config_path = Path(__file__).parent / "file_examples" / "config.yaml"
+    return config_path
+
+
 ####################################
 ##### Tests for FlexwrfArgument ####
 ####################################
@@ -119,15 +127,15 @@ class Test_OutputPath:
         assert Argument.linecaster(line) == Path("test/path")
 
     def test_line(self, example_path):
-        Argument = StaticArgument(type=Path, dummyline="#/\n")
+        Argument = StaticArgument(type=Path, dummyline=f"#{os.path.sep}\n")
         with example_path.open() as f:
             f.readline()
             Argument.read(f)
         target_path = Path("/scratch2/portfolios/BMC/stela/jbrioude/test_depo1/")
-        assert Argument.line == f"{target_path}/\n"
+        assert Argument.line == f"{target_path}{os.path.sep}\n"
 
     def test_read(self, example_path):
-        Argument = StaticArgument(type=Path, dummyline="#/\n")
+        Argument = StaticArgument(type=Path, dummyline=f"#{os.path.sep}\n")
 
         with example_path.open() as f:
             f.readline()
@@ -209,6 +217,18 @@ class Test_Species:
         assert species.as_strings() == ["      ", "  0.80"]
 
 
+class Test_Releases:
+    def test_add_copy(self, example_path, flexwrfinput):
+        flexwrfinput.read(example_path)
+        releases: Releases = flexwrfinput.releases
+        releases.add_copy(release_index=0)
+        assert releases.numpoint.value == 3
+        releases.xpoint1[1] = 50
+        releases.add_copy(release_index=1, releases=releases)
+        assert releases.numpoint.value == 4
+        assert releases.xpoint1[1] == releases.xpoint1[1]
+
+
 class Test_FlexwrfInput:
     def test_read_forward1(self, example_path, flexwrfinput):
         flexwrfinput.read(example_path)
@@ -271,6 +291,11 @@ class Test_FlexwrfInput:
                 == getattr(flexwrfinput2, option).lines
             )
         assert flexwrfinput.lines == flexwrfinput2.lines
+
+    def test_read_config(self, flexwrfinput: FlexwrfInput, config_path):
+        flexwrfinput.read(config_path, is_config=True)
+        assert flexwrfinput.command.start.value == "20000101 000000"
+        assert flexwrfinput.releases.name[1] == "another one"
 
     def test_set(self, example_path, flexwrfinput):
         flexwrfinput.read(example_path)
@@ -336,4 +361,11 @@ def test_read_input(example_path):
     input_instance = FlexwrfInput()
     input_instance.read(example_path)
     read_instance = read_input(example_path)
+    assert input_instance.lines == read_instance.lines
+
+
+def test_read_config(config_path):
+    input_instance = FlexwrfInput()
+    input_instance.read(config_path, is_config=True)
+    read_instance = read_input(config_path, is_config=True)
     assert input_instance.lines == read_instance.lines

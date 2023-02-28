@@ -1,3 +1,11 @@
+from donfig import Config
+from pathlib import Path
+
+default_config = Config(
+    "flexwrfinput", paths=[Path(__file__).parent / ".default_flexwrfinput_config.yaml"]
+)
+
+
 from .flexwrfinput import FlexwrfInput, read_input
 from .flexwrfoutput import (
     combine,
