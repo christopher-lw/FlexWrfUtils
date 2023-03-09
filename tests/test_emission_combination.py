@@ -3,7 +3,11 @@ import pytest
 import numpy as np
 import xarray as xr
 
-from flexwrfutils.emission_combination import decode_wrf_times, match_coordinates
+from flexwrfutils.emission_combination import (
+    decode_wrf_times,
+    match_coordinates,
+    get_emission_files,
+)
 from flexwrfutils.flexwrfoutput import FlexwrfOutput
 
 
@@ -99,3 +103,24 @@ def test_match_coordinates(flexwrf_output_only_data, emissions):
 def test_match_coordinates_large_shift(flexwrf_output_only_data, emissions_large_shift):
     matched_data = match_coordinates(flexwrf_output_only_data, emissions_large_shift)
     _ = matched_data
+
+
+def test_get_emission_files(tmp_path):
+    content = "content"
+
+    parent_directory = tmp_path / "emissions"
+    parent_directory.mkdir()
+    emission_file_names = [f"file{i}" for i in range(3)]
+    emission_file_paths = [
+        parent_directory / emission_file_name
+        for emission_file_name in emission_file_names
+    ]
+    [emission_file.write_text(content) for emission_file in emission_file_paths]
+
+    emission_file_paths_func = get_emission_files(parent_directory)
+    assert set(emission_file_paths) == set(emission_file_paths_func)
+
+    emission_file_paths_func = get_emission_files(
+        parent_directory, emission_file_names[1:]
+    )
+    assert set(emission_file_paths[1:]) == set(emission_file_paths_func)

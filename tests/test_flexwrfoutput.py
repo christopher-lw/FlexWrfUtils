@@ -2,8 +2,15 @@ import pytest
 
 import xarray as xr
 import numpy as np
+import pint
 
-from flexwrfutils.flexwrfoutput import combine, FlexwrfOutput
+from flexwrfutils.flexwrfoutput import (
+    combine,
+    FlexwrfOutput,
+    get_flexpart_directories,
+    set_times_to_start,
+    parse_units_to_pint,
+)
 
 
 @pytest.fixture
@@ -74,6 +81,38 @@ def test_combine(flxout, header):
     assert "XLONG" in combination.coords
 
 
+def test_get_flexpart_directories(tmp_path):
+    content = "content"
+
+    parent_directory = tmp_path / "parent"
+    parent_directory.mkdir()
+    flexpart_dirs = [parent_directory / f"dir{i}" for i in range(2)]
+    [flexpart_dir.mkdir() for flexpart_dir in flexpart_dirs]
+    [
+        (flexpart_dir / "flexwrf.input").write_text(content)
+        for flexpart_dir in flexpart_dirs
+    ]
+
+    other_dir = parent_directory / "other"
+    other_dir.mkdir()
+
+    flexpart_dirs_func = get_flexpart_directories([parent_directory])
+    assert set(flexpart_dirs) == set(flexpart_dirs_func)
+    assert other_dir not in flexpart_dirs_func
+
+
+def test_set_times_to_start(simple_flexwrf_output):
+    changed_data = set_times_to_start(simple_flexwrf_output.data)
+    assert changed_data == simple_flexwrf_output.data.sortby(
+        "Time"
+    ).Time - np.datetime64(1, "h")
+
+
+def test_parse_units_to_pint():
+    units = "m s3 kg-1"
+    assert parse_units_to_pint(units) == pint.Unit("m*s^3*kg^-1")
+
+
 class Test_FlexwrfOutput:
     def test_longitudes(self, simple_flexwrf_output):
         assert simple_flexwrf_output.longitudes is not None
@@ -108,3 +147,18 @@ class Test_FlexwrfOutput:
             simple_flexwrf_output.data.CONC.squeeze(drop=True).values
             == concentrations.values
         ).all()
+
+    def test_simulation_start(self, simple_flexwrf_output):
+        assert simple_flexwrf_output.simulation_start == np.datetime64(
+            "2021-08-02T15:00:00"
+        )
+
+    def test_release_starts(self, simple_flexwrf_output):
+        release_starts = simple_flexwrf_output.release_starts
+        expected_release_start = (
+            simple_flexwrf_output.simulation_start
+            + simple_flexwrf_output.data.ReleaseTstart_end.isel(
+                ReleaseStartEnd=0
+            ).astype("timedelta64[s]")
+        )
+        assert (release_starts == expected_release_start).all()

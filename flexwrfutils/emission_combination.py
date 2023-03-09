@@ -1,6 +1,6 @@
 """This file contains tools to handle the combination of emissions together with the output of FLEXPART-WRF
 """
-from typing import Union, List
+from typing import Union, List, Optional
 from pathlib import Path
 from copy import deepcopy
 
@@ -58,3 +58,16 @@ def match_coordinates(
                 "Spatial coordinates of the output and the emissions is not equal enough"
             )
     return flexwrf_data
+
+
+def get_emission_files(
+    parent_directory: Union[str, Path], emission_files: Optional[List[str]] = None
+) -> List[Path]:
+    parent_directory = Path(parent_directory)
+    if emission_files is None:
+        emission_paths = [path for path in parent_directory.iterdir()]
+    else:
+        emission_paths = [
+            parent_directory / emission_file for emission_file in emission_files
+        ]
+    return emission_paths

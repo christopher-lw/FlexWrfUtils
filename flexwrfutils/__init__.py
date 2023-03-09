@@ -13,5 +13,13 @@ from .flexwrfoutput import (
     FlexwrfOutput,
     read_output,
     get_output_paths,
+    get_flexpart_directories,
+    set_times_to_start,
+    parse_units_to_pint,
 )
-from .emission_combination import decode_wrf_times, open_emissionfile, match_coordinates
+from .emission_combination import (
+    decode_wrf_times,
+    open_emissionfile,
+    match_coordinates,
+    get_emission_files,
+)
